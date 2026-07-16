@@ -209,6 +209,175 @@ app.get(['/auth/google/callback', '/auth/google/callback/'], (req, res) => {
   `);
 });
 
+app.get(['/auth/github/callback', '/auth/github/callback/'], async (req, res) => {
+  const { code } = req.query;
+
+  if (!code) {
+    return res.send(`
+      <html>
+        <body style="background:#0f172a;color:white;font-family:sans-serif;text-align:center;padding:50px;">
+          <h2>Authentication Failed</h2>
+          <p>No authorization code received from GitHub.</p>
+        </body>
+      </html>
+    `);
+  }
+
+  try {
+    const clientId = process.env.GITHUB_CLIENT_ID;
+    const clientSecret = process.env.GITHUB_CLIENT_SECRET;
+
+    if (!clientId || !clientSecret) {
+      throw new Error('Server is missing GITHUB_CLIENT_ID or GITHUB_CLIENT_SECRET environment variables.');
+    }
+
+    // 1. Swap authorization code for access token
+    const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({
+        client_id: clientId,
+        client_secret: clientSecret,
+        code
+      })
+    });
+
+    const tokenData: any = await tokenResponse.json();
+
+    if (tokenData.error) {
+      throw new Error(`GitHub Token Error: ${tokenData.error_description || tokenData.error}`);
+    }
+
+    const githubAccessToken = tokenData.access_token;
+
+    // 2. Fetch user profile from GitHub
+    const userProfileResponse = await fetch('https://api.github.com/user', {
+      headers: {
+        'Authorization': `Bearer ${githubAccessToken}`,
+        'User-Agent': 'Prompt-Saver-OAuth'
+      }
+    });
+
+    const userProfile: any = await userProfileResponse.json();
+
+    if (!userProfile || !userProfile.login) {
+      throw new Error('Failed to retrieve user profile from GitHub.');
+    }
+
+    // 3. Retrieve user email (sometimes email is null/private, so fetch from emails list)
+    let email = userProfile.email;
+    if (!email) {
+      const emailsResponse = await fetch('https://api.github.com/user/emails', {
+        headers: {
+          'Authorization': `Bearer ${githubAccessToken}`,
+          'User-Agent': 'Prompt-Saver-OAuth'
+        }
+      });
+      if (emailsResponse.ok) {
+        const emails: any[] = await emailsResponse.json();
+        const primaryEmail = emails.find((e: any) => e.primary && e.verified) || emails.find((e: any) => e.primary) || emails[0];
+        if (primaryEmail) {
+          email = primaryEmail.email;
+        }
+      }
+    }
+
+    if (!email) {
+      email = `${userProfile.login}@github.com`;
+    }
+
+    const name = userProfile.name || userProfile.login;
+    const picture = userProfile.avatar_url || '';
+
+    // Render HTML page to post message back to the application and close itself
+    res.send(`
+<!DOCTYPE html>
+<html>
+<head>
+  <title>GitHub Sign In Callback</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f172a;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+    .container {
+      text-align: center;
+      padding: 40px;
+      background: #1e293b;
+      border-radius: 12px;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+      max-width: 400px;
+      width: 90%;
+    }
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid rgba(255, 255, 255, 0.1);
+      border-top-color: #5b8cff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 20px auto;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="spinner"></div>
+    <h2 style="font-size: 18px; font-weight: 600; margin: 0 0 8px 0;">GitHub Sign In</h2>
+    <p style="color: #94a3b8; font-size: 14px; margin: 0; line-height: 1.5;">Completing authentication...</p>
+  </div>
+  <script>
+    if (window.opener) {
+      window.opener.postMessage({
+        type: 'GITHUB_OAUTH_SUCCESS',
+        user: {
+          email: ${JSON.stringify(email)},
+          name: ${JSON.stringify(name)},
+          picture: ${JSON.stringify(picture)}
+        }
+      }, '*');
+      window.close();
+    } else {
+      document.querySelector('h2').textContent = 'Sign In Completed';
+      document.querySelector('p').textContent = 'You can safely close this window.';
+    }
+  </script>
+</body>
+</html>
+    `);
+
+  } catch (error: any) {
+    console.error('Error during GitHub OAuth callback:', error);
+    res.send(`
+      <html>
+        <body style="background:#0f172a;color:white;font-family:sans-serif;text-align:center;padding:50px;">
+          <h2 style="color:#f87171;">Authentication Error</h2>
+          <p>${error.message}</p>
+          <button onclick="window.close()" style="background:#4f46e5;color:white;border:none;padding:10px 20px;border-radius:6px;cursor:pointer;margin-top:20px;">Close Window</button>
+        </body>
+      </html>
+    `);
+  }
+});
+
+app.get('/api/github-config', (req, res) => {
+  res.json({
+    clientId: process.env.GITHUB_CLIENT_ID || ''
+  });
+});
+
 app.get('/api/firebase-config', (req, res) => {
   try {
     const configPath = path.join(__dirname, 'firebase-applet-config.json');
@@ -364,7 +533,8 @@ app.post('/api/prompts', verifyToken, async (req: any, res) => {
 
     const numericId = Number(id);
     let hasExistingPrompt = false;
-    if (!Number.isNaN(numericId)) {
+    // Check if numericId is a valid 32-bit signed integer to prevent PostgreSQL out-of-range errors
+    if (!Number.isNaN(numericId) && Number.isInteger(numericId) && numericId >= -2147483648 && numericId <= 2147483647) {
       const [existingPrompt] = await db.select()
         .from(prompts)
         .where(and(eq(prompts.id, numericId), eq(prompts.userId, userId)));
@@ -472,7 +642,8 @@ app.delete('/api/prompts/:id', verifyToken, async (req: any, res) => {
     }
 
     const numericId = Number(req.params.id);
-    if (!Number.isNaN(numericId)) {
+    // Check if numericId is a valid 32-bit signed integer to prevent PostgreSQL out-of-range errors
+    if (!Number.isNaN(numericId) && Number.isInteger(numericId) && numericId >= -2147483648 && numericId <= 2147483647) {
       await db.delete(prompts).where(and(eq(prompts.id, numericId), eq(prompts.userId, userId)));
     }
 

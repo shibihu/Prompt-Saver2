@@ -116,6 +116,142 @@ async function initFirebase() {
 // Call initFirebase immediately
 initFirebase();
 
+// Register message listener for direct Google or GitHub OAuth callback popups
+window.addEventListener('message', async (event) => {
+  if (event.data && (event.data.type === 'GOOGLE_OAUTH_SUCCESS' || event.data.type === 'GITHUB_OAUTH_SUCCESS')) {
+    const { user } = event.data;
+    try {
+      loginLoading.style.display = 'block';
+      accountChooserContainer.style.opacity = '0.5';
+      
+      // Exchange profile for App session tokens
+      const authRes = await fetch(`${BACKEND_URL}/oauth/authorize`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: user.email, name: user.name }),
+      });
+
+      const authData = await authRes.json();
+      if (!authRes.ok) throw new Error(authData.error || 'Authorization failed');
+
+      const tokenRes = await fetch(`${BACKEND_URL}/oauth/token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ authCode: authData.authCode }),
+      });
+
+      const tokenData = await tokenRes.json();
+      if (!tokenRes.ok) throw new Error(tokenData.error || 'Token exchange failed');
+
+      // Attach the avatar picture if available
+      if (user.picture) {
+        tokenData.user.picture = user.picture;
+      }
+
+      localStorage.setItem('accessToken', tokenData.accessToken);
+      localStorage.setItem('refreshToken', tokenData.refreshToken);
+      localStorage.setItem('user', JSON.stringify(tokenData.user));
+
+      currentAccessToken = tokenData.accessToken;
+      currentUser = tokenData.user;
+
+      loginLoading.style.display = 'none';
+      loginSuccessMsg.textContent = `Welcome back, ${currentUser.name}! Redirecting...`;
+      loginSuccessMsg.style.display = 'block';
+
+      setTimeout(() => {
+        showApp();
+        accountChooserContainer.style.opacity = '1';
+        loginLoading.style.display = 'none';
+      }, 600);
+    } catch (error) {
+      accountChooserContainer.style.opacity = '1';
+      loginLoading.style.display = 'none';
+      loginErrorMsg.textContent = `Sign-In Error: ${error.message}`;
+      loginErrorMsg.style.display = 'block';
+    }
+  }
+});
+
+async function initiateDirectGoogleSignIn() {
+  loginLoading.style.display = 'block';
+  accountChooserContainer.style.opacity = '0.5';
+  
+  try {
+    let clientId = "276434759121-87rfkcqrjhpo5fdp4k9d3iudg3t7b95u.apps.googleusercontent.com";
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/firebase-config`);
+      if (res.ok) {
+        const config = await res.json();
+        if (config.oAuthClientId) {
+          clientId = config.oAuthClientId;
+        }
+      }
+    } catch (e) {
+      console.warn("Could not fetch Google Client ID from API, using fallback", e);
+    }
+
+    const redirectUri = encodeURIComponent(`${window.location.origin}/auth/google/callback`);
+    const scope = encodeURIComponent('email profile openid');
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=token&scope=${scope}&prompt=select_account`;
+
+    const width = 500;
+    const height = 600;
+    const left = window.screenX + (window.outerWidth - width) / 2;
+    const top = window.screenY + (window.outerHeight - height) / 2;
+    
+    const popup = window.open(authUrl, 'GoogleSignIn', `width=${width},height=${height},left=${left},top=${top}`);
+    if (popup) {
+      popup.focus();
+    } else {
+      throw new Error('Popup blocked! Please allow popups for this website to sign in.');
+    }
+  } catch (error) {
+    accountChooserContainer.style.opacity = '1';
+    loginLoading.style.display = 'none';
+    loginErrorMsg.textContent = `Google Sign-In Error: ${error.message}`;
+    loginErrorMsg.style.display = 'block';
+  }
+}
+
+async function initiateGitHubSignIn() {
+  loginLoading.style.display = 'block';
+  accountChooserContainer.style.opacity = '0.5';
+  
+  try {
+    let clientId = "";
+    const res = await fetch(`${BACKEND_URL}/api/github-config`);
+    if (res.ok) {
+      const config = await res.json();
+      clientId = config.clientId;
+    }
+    
+    if (!clientId) {
+      throw new Error('GitHub Client ID is not configured on the server. Please add GITHUB_CLIENT_ID to the backend environment variables.');
+    }
+
+    const redirectUri = encodeURIComponent(`${window.location.origin}/auth/github/callback`);
+    const authUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=user:email`;
+
+    const width = 550;
+    const height = 650;
+    const left = window.screenX + (window.outerWidth - width) / 2;
+    const top = window.screenY + (window.outerHeight - height) / 2;
+    
+    const popup = window.open(authUrl, 'GitHubSignIn', `width=${width},height=${height},left=${left},top=${top}`);
+    if (popup) {
+      popup.focus();
+    } else {
+      throw new Error('Popup blocked! Please allow popups for this website to sign in.');
+    }
+  } catch (error) {
+    accountChooserContainer.style.opacity = '1';
+    loginLoading.style.display = 'none';
+    loginErrorMsg.textContent = `GitHub Sign-In Error: ${error.message}`;
+    loginErrorMsg.style.display = 'block';
+  }
+}
+
 // Real Google Sign-In Action
 const realGoogleSignInBtn = document.getElementById('realGoogleSignInBtn');
 
@@ -125,8 +261,8 @@ if (realGoogleSignInBtn) {
     loginSuccessMsg.style.display = 'none';
     
     if (!firebaseAuth) {
-      loginErrorMsg.textContent = 'Firebase is still loading, please wait.';
-      loginErrorMsg.style.display = 'block';
+      console.log('Firebase is not loaded, using direct Google OAuth...');
+      initiateDirectGoogleSignIn();
       return;
     }
     
@@ -188,11 +324,28 @@ if (realGoogleSignInBtn) {
         loginLoading.style.display = 'none';
       }, 600);
     } catch (error) {
-      accountChooserContainer.style.opacity = '1';
-      loginLoading.style.display = 'none';
-      loginErrorMsg.textContent = `Google Sign-In Error: ${error.message}`;
-      loginErrorMsg.style.display = 'block';
+      console.warn("Firebase Auth popup failed, attempting direct Google OAuth fallback:", error);
+      if (error.code === 'auth/unauthorized-domain' || error.message.includes('unauthorized') || error.message.includes('domain') || error.message.includes('refused') || error.message.includes('blocked') || error.code === 'auth/popup-blocked') {
+        // Fallback directly to direct Google OAuth 2.0 popup
+        initiateDirectGoogleSignIn();
+      } else {
+        accountChooserContainer.style.opacity = '1';
+        loginLoading.style.display = 'none';
+        loginErrorMsg.textContent = `Google Sign-In Error: ${error.message}`;
+        loginErrorMsg.style.display = 'block';
+      }
     }
+  });
+}
+
+// Real GitHub Sign-In Action
+const realGitHubSignInBtn = document.getElementById('realGitHubSignInBtn');
+
+if (realGitHubSignInBtn) {
+  realGitHubSignInBtn.addEventListener('click', async () => {
+    loginErrorMsg.style.display = 'none';
+    loginSuccessMsg.style.display = 'none';
+    initiateGitHubSignIn();
   });
 }
 

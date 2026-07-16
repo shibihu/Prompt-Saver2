@@ -262,6 +262,43 @@
       transform: scale(0.98);
     }
 
+    /* GitHub Sign-In Button Styles */
+    .github-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 48px;
+      background-color: #24292f;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+      cursor: pointer;
+      transition: background-color 0.2s, box-shadow 0.2s, transform 0.1s;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin-top: 10px;
+      margin-bottom: 20px;
+    }
+
+    .github-btn:hover {
+      background-color: #2f363d;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+    }
+
+    .github-btn:active {
+      background-color: #1f2327;
+      transform: scale(0.98);
+    }
+
+    .github-btn-text {
+      color: #ffffff;
+      font-size: 15px;
+      font-weight: 500;
+      letter-spacing: 0.25px;
+      margin-right: 24px;
+    }
+
     .google-icon-wrapper {
       display: flex;
       align-items: center;
@@ -490,17 +527,14 @@
       <p style="font-size: 14px; color: #94a3b8; text-align: center; margin: 0 0 28px 0;">Sign in to continue to Prompt Saver</p>
 
       <div style="display: flex; flex-direction: column; margin-bottom: 16px;">
-        <!-- Real Google Sign-In Button -->
-        <button id="realGoogleSignInBtn" class="google-btn">
+        <!-- Real GitHub Sign-In Button -->
+        <button id="realGitHubSignInBtn" class="github-btn">
           <div class="google-icon-wrapper">
-            <svg class="google-icon" viewBox="0 0 18 18" width="18" height="18">
-              <path fill="#4285F4" d="M17.64 9.2c0-.63-.06-1.25-.16-1.84H9v3.47h4.84c-.21 1.12-.84 2.07-1.79 2.7l2.78 2.16c1.63-1.5 2.57-3.71 2.57-6.49z"/>
-              <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.78-2.16c-.77.52-1.76.83-3.18.83-2.72 0-5.02-1.84-5.84-4.32H.36v2.24C1.84 15.3 5.14 18 9 18z"/>
-              <path fill="#F9BC05" d="M3.16 10.17A5.4 5.4 0 0 1 3 9c0-.4.07-.8.16-1.17V5.59H.36A8.99 8.99 0 0 0 0 9c0 1.22.25 2.39.69 3.47l2.47-1.92z"/>
-              <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35L15 2.1C13.4 1 11.4 0 9 0 5.14 0 1.84 2.7.36 5.59l2.8 2.17C3.98 5.42 6.28 3.58 9 3.58z"/>
+            <svg viewBox="0 0 16 16" width="18" height="18" fill="white">
+              <path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.35 3.12.83.01.64.01 1.25.01 1.42 0 .21-.15.46-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8z"/>
             </svg>
           </div>
-          <span class="google-btn-text">Sign in with Google</span>
+          <span class="github-btn-text">Sign in with GitHub</span>
         </button>
 
         <div class="login-divider">or</div>
@@ -515,7 +549,7 @@
       </div>
 
       <p class="disclosure-text">
-        To continue, Google will share your name, email address, and profile picture with Prompt Saver. Before using this app, review its <a href="#" id="disclosure-privacy-link">privacy policy</a> and <a href="#" id="disclosure-terms-link">terms of service</a>.
+        To continue, GitHub will share your name, email address, and profile picture with Prompt Saver. Before using this app, review its <a href="#" id="disclosure-privacy-link">privacy policy</a> and <a href="#" id="disclosure-terms-link">terms of service</a>.
       </p>
     </div>
 
