@@ -33,15 +33,28 @@ async function ensureUser(email, name) {
   };
 }
 
+async function getOrCreateUserIdByEmail(email, name) {
+  const db = getDb();
+  let userRow = await db.get('SELECT id FROM users WHERE username = ?', [email]);
+  if (!userRow) {
+    await db.run(
+      `INSERT OR IGNORE INTO users (username, password) VALUES (?, ?)`,
+      [email, 'oauth-user']
+    );
+    userRow = await db.get('SELECT id FROM users WHERE username = ?', [email]);
+  }
+  return userRow?.id || null;
+}
+
 async function getUserIdByEmail(email) {
   const db = getDb();
   const userRow = await db.get('SELECT id FROM users WHERE username = ?', [email]);
   return userRow?.id || null;
 }
 
-async function getUserPromptsByEmail(email) {
+async function getUserPromptsByEmail(email, name) {
   const db = getDb();
-  const userId = await getUserIdByEmail(email);
+  const userId = await getOrCreateUserIdByEmail(email, name || email);
 
   if (!userId) {
     return [];
@@ -131,7 +144,8 @@ app.post('/oauth/refresh', async (req, res) => {
   try {
     const decoded = jwt.verify(refreshToken, JWT_SECRET);
     const db = getDb();
-    const userRow = await db.get('SELECT id, username FROM users WHERE username = ?', [decoded.email]);
+    const userId = await getOrCreateUserIdByEmail(decoded.email, decoded.name || decoded.email);
+    const userRow = await db.get('SELECT id, username FROM users WHERE id = ?', [userId]);
 
     if (!userRow) {
       return res.status(401).json({ error: 'User not found' });
@@ -177,7 +191,7 @@ app.post('/api/logout', verifyToken, (req, res) => {
 
 app.get('/api/prompts', verifyToken, async (req, res) => {
   try {
-    const prompts = await getUserPromptsByEmail(req.user.email);
+    const prompts = await getUserPromptsByEmail(req.user.email, req.user.name);
     res.json(prompts);
   } catch (error) {
     console.error('Error loading prompts:', error);
@@ -194,7 +208,7 @@ app.post('/api/prompts', verifyToken, async (req, res) => {
 
   try {
     const db = getDb();
-    const userId = await getUserIdByEmail(req.user.email);
+    const userId = await getOrCreateUserIdByEmail(req.user.email, req.user.name || req.user.email);
 
     if (!userId) {
       return res.status(404).json({ error: 'User not found' });
@@ -222,7 +236,7 @@ app.post('/api/prompts', verifyToken, async (req, res) => {
       );
     }
 
-    const prompts = await getUserPromptsByEmail(req.user.email);
+    const prompts = await getUserPromptsByEmail(req.user.email, req.user.name);
     res.json(prompts);
   } catch (error) {
     console.error('Error saving prompt:', error);
@@ -240,7 +254,7 @@ app.post('/api/prompts/batch', verifyToken, async (req, res) => {
 
   try {
     const db = getDb();
-    const userId = await getUserIdByEmail(req.user.email);
+    const userId = await getOrCreateUserIdByEmail(req.user.email, req.user.name || req.user.email);
 
     if (!userId) {
       return res.status(404).json({ error: 'User not found' });
@@ -270,7 +284,7 @@ app.post('/api/prompts/batch', verifyToken, async (req, res) => {
 
     await db.run('COMMIT');
 
-    const prompts = await getUserPromptsByEmail(req.user.email);
+    const prompts = await getUserPromptsByEmail(req.user.email, req.user.name);
     res.json(prompts);
   } catch (error) {
     try {
@@ -285,7 +299,7 @@ app.post('/api/prompts/batch', verifyToken, async (req, res) => {
 app.delete('/api/prompts/:id', verifyToken, async (req, res) => {
   try {
     const db = getDb();
-    const userId = await getUserIdByEmail(req.user.email);
+    const userId = await getOrCreateUserIdByEmail(req.user.email, req.user.name || req.user.email);
 
     if (!userId) {
       return res.status(404).json({ error: 'User not found' });
@@ -296,7 +310,7 @@ app.delete('/api/prompts/:id', verifyToken, async (req, res) => {
       await db.run('DELETE FROM prompts WHERE id = ? AND user_id = ?', [numericId, userId]);
     }
 
-    const prompts = await getUserPromptsByEmail(req.user.email);
+    const prompts = await getUserPromptsByEmail(req.user.email, req.user.name);
     res.json(prompts);
   } catch (error) {
     console.error('Error deleting prompt:', error);
@@ -311,7 +325,8 @@ app.get('/login', (req, res) => {
 app.get('/api/user/profile', verifyToken, async (req, res) => {
   try {
     const db = getDb();
-    const userRow = await db.get('SELECT id, username FROM users WHERE username = ?', [req.user.email]);
+    const userId = await getOrCreateUserIdByEmail(req.user.email, req.user.name || req.user.email);
+    const userRow = await db.get('SELECT id, username FROM users WHERE id = ?', [userId]);
 
     if (!userRow) {
       return res.status(404).json({ error: 'User not found' });
