@@ -173,6 +173,22 @@ app.get(['/auth/google/callback', '/auth/google/callback/'], (req, res) => {
   `);
 });
 
+app.get('/api/firebase-config', (req, res) => {
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const configPath = path.join(__dirname, 'firebase-applet-config.json');
+    if (fs.existsSync(configPath)) {
+      const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      res.json(config);
+    } else {
+      res.status(404).json({ error: 'Config not found' });
+    }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post('/oauth/authorize', (req, res) => {
   const { email, name } = req.body;
 

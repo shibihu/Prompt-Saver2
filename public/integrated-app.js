@@ -94,60 +94,64 @@ if (disclosureTermsLink) {
   });
 }
 
+// Global Firebase variables
+let firebaseAuth = null;
+
+// Initialize Firebase Auth
+async function initFirebase() {
+  try {
+    const res = await fetch('/api/firebase-config');
+    if (!res.ok) throw new Error('Could not load Firebase config');
+    const firebaseConfig = await res.json();
+    
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    firebaseAuth = firebase.auth();
+    console.log('Firebase initialized successfully');
+  } catch (err) {
+    console.error('Failed to initialize Firebase:', err);
+  }
+}
+
+// Call initFirebase immediately
+initFirebase();
+
 // Real Google Sign-In Action
 const realGoogleSignInBtn = document.getElementById('realGoogleSignInBtn');
 
 if (realGoogleSignInBtn) {
-  realGoogleSignInBtn.addEventListener('click', () => {
+  realGoogleSignInBtn.addEventListener('click', async () => {
     loginErrorMsg.style.display = 'none';
     loginSuccessMsg.style.display = 'none';
     
-    const client_id = "276434759121-87rfkcqrjhpo5fdp4k9d3iudg3t7b95u.apps.googleusercontent.com";
-    const redirect_uri = `${window.location.origin}/auth/google/callback`;
-    const scope = "openid email profile";
+    if (!firebaseAuth) {
+      loginErrorMsg.textContent = 'Firebase is still loading, please wait.';
+      loginErrorMsg.style.display = 'block';
+      return;
+    }
     
-    const width = 500;
-    const height = 620;
-    const left = (window.screen.width - width) / 2;
-    const top = (window.screen.height - height) / 2;
-    
-    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` + 
-      `client_id=${encodeURIComponent(client_id)}` +
-      `&redirect_uri=${encodeURIComponent(redirect_uri)}` +
-      `&response_type=token` +
-      `&scope=${encodeURIComponent(scope)}` +
-      `&prompt=select_account`;
-      
-    window.open(
-      authUrl,
-      'google_oauth_popup',
-      `width=${width},height=${height},top=${top},left=${left},resizable=yes,scrollbars=yes`
-    );
-  });
-}
-
-// Listen for message from Google Sign-In popup callback window
-window.addEventListener('message', async (event) => {
-  const origin = event.origin;
-  if (!origin.endsWith('.run.app') && !origin.includes('localhost')) {
-    return;
-  }
-  
-  if (event.data?.type === 'GOOGLE_OAUTH_SUCCESS') {
-    const { user } = event.data;
-    if (!user || !user.email) return;
-    
-    loginErrorMsg.style.display = 'none';
-    loginSuccessMsg.style.display = 'none';
     loginLoading.style.display = 'block';
     accountChooserContainer.style.opacity = '0.5';
     
     try {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      // Force account selection screen
+      provider.setCustomParameters({
+        prompt: 'select_account'
+      });
+      
+      const result = await firebaseAuth.signInWithPopup(provider);
+      const user = result.user;
+      
+      if (!user || !user.email) {
+        throw new Error('Google did not return an email address');
+      }
+      
       // Exchange Google profile for App session tokens
       const authRes = await fetch(`${BACKEND_URL}/oauth/authorize`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: user.email, name: user.name || user.email }),
+        body: JSON.stringify({ email: user.email, name: user.displayName || user.email }),
       });
 
       const authData = await authRes.json();
@@ -163,8 +167,8 @@ window.addEventListener('message', async (event) => {
       if (!tokenRes.ok) throw new Error(tokenData.error || 'Token exchange failed');
 
       // Attach the Google avatar picture if available
-      if (user.picture) {
-        tokenData.user.picture = user.picture;
+      if (user.photoURL) {
+        tokenData.user.picture = user.photoURL;
       }
 
       localStorage.setItem('accessToken', tokenData.accessToken);
@@ -174,6 +178,7 @@ window.addEventListener('message', async (event) => {
       currentAccessToken = tokenData.accessToken;
       currentUser = tokenData.user;
 
+      loginLoading.style.display = 'none';
       loginSuccessMsg.textContent = `Welcome back, ${currentUser.name}! Redirecting...`;
       loginSuccessMsg.style.display = 'block';
 
@@ -188,8 +193,8 @@ window.addEventListener('message', async (event) => {
       loginErrorMsg.textContent = `Google Sign-In Error: ${error.message}`;
       loginErrorMsg.style.display = 'block';
     }
-  }
-});
+  });
+}
 
 // Handle custom login form submission and switch into the app shell
 loginForm.addEventListener('submit', async (e) => {
