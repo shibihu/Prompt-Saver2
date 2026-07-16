@@ -64,3 +64,36 @@ pool.on('error', (err) => {
 
 // Initialize Drizzle with the pool and schema.
 export const db = drizzle(pool, { schema });
+
+// Function to automatically initialize table schemas if they don't exist yet
+export async function initializeDatabase() {
+  console.log('Initializing database schema if not present...');
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS "users" (
+        "id" serial PRIMARY KEY,
+        "username" text NOT NULL UNIQUE,
+        "password" text NOT NULL,
+        "created_at" timestamp DEFAULT now()
+      );
+    `);
+    console.log('Table "users" ensured.');
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS "prompts" (
+        "id" serial PRIMARY KEY,
+        "user_id" integer NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
+        "title" text NOT NULL,
+        "content" text NOT NULL,
+        "tags" text,
+        "created_at" timestamp DEFAULT now(),
+        "is_pinned" integer DEFAULT 0,
+        "use_count" integer DEFAULT 0,
+        "folder" text
+      );
+    `);
+    console.log('Table "prompts" ensured.');
+  } catch (error) {
+    console.error('Error during database schema initialization:', error);
+  }
+}

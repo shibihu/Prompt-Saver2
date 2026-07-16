@@ -6,7 +6,7 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import crypto from 'crypto';
 import dotenv from 'dotenv';
-import { db } from './src/db/index.ts';
+import { db, initializeDatabase } from './src/db/index.ts';
 import { users, prompts } from './src/db/schema.ts';
 import { eq, and, desc } from 'drizzle-orm';
 
@@ -31,16 +31,21 @@ function formatDatabaseError(error: any): Error {
   const causeMessage = error?.cause?.message || '';
   const fullErrorStr = `${message} ${causeMessage}`.toLowerCase();
 
-  if (fullErrorStr.includes('eai_again') || fullErrorStr.includes('enotfound') || fullErrorStr.includes('getaddrinfo')) {
-    if (fullErrorStr.includes('dpg-') && !fullErrorStr.includes('.render.com')) {
+  const connectionString = process.env.DATABASE_URL || process.env.SQL_DATABASE_URL || '';
+  const host = process.env.SQL_HOST || '';
+  const isInternalUrl = /dpg-[a-z0-9]+-a([:@/]|$)/i.test(connectionString) && !connectionString.includes('.render.com');
+  const isInternalHost = host && /dpg-[a-z0-9]+-a$/i.test(host) && !host.includes('.render.com');
+
+  if (isInternalUrl || isInternalHost || fullErrorStr.includes('eai_again') || fullErrorStr.includes('enotfound') || fullErrorStr.includes('getaddrinfo')) {
+    if (isInternalUrl || isInternalHost || (fullErrorStr.includes('dpg-') && !fullErrorStr.includes('.render.com'))) {
       return new Error(
-        'Database connection failed: It looks like you have configured a Render.com INTERNAL Database URL (host ending in "-a") inside your environment variables. ' +
-        'Because AI Studio, Vercel, and other external services run outside of Render\'s private network, you MUST use Render\'s EXTERNAL Database URL ' +
-        '(which ends with ".render.com") in your DATABASE_URL/SQL_HOST environment variables. Please update them in your platform settings.'
+        'Database connection failed: You are using a Render.com INTERNAL Database URL or Host (ending in "-a"). ' +
+        '1. If you are previewing in AI Studio: The AI Studio preview runs outside of Render\'s private network, so you MUST use Render\'s EXTERNAL Database URL (ends with ".render.com") in your AI Studio secrets settings. ' +
+        '2. If you are deployed on Render: Render\'s internal network only allows connections between services in the EXACT same region. If your database and app are in different regions, or if you want it to work everywhere, please update your environment variable to the EXTERNAL Database URL.'
       );
     }
     return new Error(
-      'Database connection failed: Hostname could not be resolved. Please verify that your DATABASE_URL or SQL_HOST is correct and is accessible from external networks.'
+      'Database connection failed: Hostname could not be resolved. Please verify that your DATABASE_URL or SQL_HOST is correct, active, and accessible from external networks.'
     );
   }
 
@@ -720,6 +725,9 @@ app.get('/api/user/profile', verifyToken, async (req: any, res) => {
 });
 
 (async () => {
+  // Initialize table schema if they do not exist in the database yet
+  await initializeDatabase();
+
   app.listen(PORT, () => {
     console.log(`Authorization server running on http://localhost:${PORT}`);
   });
