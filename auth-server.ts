@@ -26,6 +26,45 @@ app.use(express.static('public'));
 
 const authCodes = new Map<string, { email: string; name: string; expiresAt: number }>();
 
+function formatDatabaseError(error: any): Error {
+  const message = error?.message || '';
+  const causeMessage = error?.cause?.message || '';
+  const fullErrorStr = `${message} ${causeMessage}`.toLowerCase();
+
+  if (fullErrorStr.includes('eai_again') || fullErrorStr.includes('enotfound') || fullErrorStr.includes('getaddrinfo')) {
+    if (fullErrorStr.includes('dpg-') && !fullErrorStr.includes('.render.com')) {
+      return new Error(
+        'Database connection failed: It looks like you have configured a Render.com INTERNAL Database URL (host ending in "-a") inside your environment variables. ' +
+        'Because AI Studio, Vercel, and other external services run outside of Render\'s private network, you MUST use Render\'s EXTERNAL Database URL ' +
+        '(which ends with ".render.com") in your DATABASE_URL/SQL_HOST environment variables. Please update them in your platform settings.'
+      );
+    }
+    return new Error(
+      'Database connection failed: Hostname could not be resolved. Please verify that your DATABASE_URL or SQL_HOST is correct and is accessible from external networks.'
+    );
+  }
+
+  if (fullErrorStr.includes('econnrefused')) {
+    return new Error(
+      'Database connection failed: Connection was refused by the database server. Please check if your database is active, and that external connections are allowed (e.g. check firewall/IP allowlists).'
+    );
+  }
+
+  if (fullErrorStr.includes('password authentication failed') || fullErrorStr.includes('authentication failed')) {
+    return new Error(
+      'Database authentication failed: Please double-check your database username, password, and database name in your environment variables.'
+    );
+  }
+
+  if (fullErrorStr.includes('ssl') || fullErrorStr.includes('tlsv1')) {
+    return new Error(
+      'Database connection failed: SSL/TLS handshaking error. Try enabling or disabling SSL in your connection configuration.'
+    );
+  }
+
+  return new Error(`Database query failed: ${error.message || 'Please check your database configuration.'}`);
+}
+
 async function ensureUser(email: string, name: string) {
   try {
     const [existingUser] = await db.select().from(users).where(eq(users.username, email));
@@ -51,7 +90,7 @@ async function ensureUser(email: string, name: string) {
     };
   } catch (error) {
     console.error('Error in ensureUser:', error);
-    throw new Error('Database query failed. Please try again later.', { cause: error });
+    throw formatDatabaseError(error);
   }
 }
 
@@ -70,7 +109,7 @@ async function getOrCreateUserIdByEmail(email: string, name: string) {
     return newUser.id;
   } catch (error) {
     console.error('Error in getOrCreateUserIdByEmail:', error);
-    throw new Error('Database query failed. Please try again later.', { cause: error });
+    throw formatDatabaseError(error);
   }
 }
 
@@ -80,7 +119,7 @@ async function getUserIdByEmail(email: string) {
     return existingUser ? existingUser.id : null;
   } catch (error) {
     console.error('Error in getUserIdByEmail:', error);
-    throw new Error('Database query failed. Please try again later.', { cause: error });
+    throw formatDatabaseError(error);
   }
 }
 
@@ -109,7 +148,7 @@ async function getUserPromptsByEmail(email: string, name: string) {
     }));
   } catch (error) {
     console.error('Error in getUserPromptsByEmail:', error);
-    throw new Error('Database query failed. Please try again later.', { cause: error });
+    throw formatDatabaseError(error);
   }
 }
 
