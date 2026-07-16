@@ -100,7 +100,7 @@ let firebaseAuth = null;
 // Initialize Firebase Auth
 async function initFirebase() {
   try {
-    const res = await fetch('/api/firebase-config');
+    const res = await fetch(`${BACKEND_URL}/api/firebase-config`);
     if (!res.ok) throw new Error('Could not load Firebase config');
     const firebaseConfig = await res.json();
     
