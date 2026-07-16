@@ -7,6 +7,7 @@
   "scripts": {
     "start": "node auth-server.js",
     "build": "esbuild auth-server.ts --bundle --platform=node --format=esm --packages=external --outfile=auth-server.js",
+    "postinstall": "npm run build",
     "dev": "nodemon --exec \"node --experimental-strip-types\" auth-server.ts"
   },
   "keywords": [
@@ -21,6 +22,7 @@
     "dotenv": "^16.0.0",
     "drizzle-kit": "^0.31.10",
     "drizzle-orm": "^0.45.2",
+    "esbuild": "^0.28.1",
     "express": "^4.18.2",
     "jsonwebtoken": "^9.0.0",
     "pg": "^8.22.0",
@@ -28,7 +30,6 @@
     "sqlite3": "5.1.7"
   },
   "devDependencies": {
-    "esbuild": "^0.28.1",
     "nodemon": "^3.0.0"
   }
 }
