@@ -1,7 +1,9 @@
 // ============= CONFIGURATION =============
-const BACKEND_URL = window.location.hostname.includes('vercel')
-  ? 'https://prompt-saver-project.onrender.com'
-  : (window.location.origin || 'https://prompt-saver-project.onrender.com');
+const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const isRender = window.location.hostname.includes('prompt-saver-project.onrender.com') || window.location.hostname.includes('onrender.com');
+const BACKEND_URL = (isLocal || isRender)
+  ? window.location.origin
+  : 'https://prompt-saver-project.onrender.com';
 
 // ============= LOGIN SECTION =============
 const loginWrapper = document.getElementById('loginWrapper');
@@ -191,7 +193,7 @@ async function initiateDirectGoogleSignIn() {
       console.warn("Could not fetch Google Client ID from API, using fallback", e);
     }
 
-    const redirectUri = encodeURIComponent(`${window.location.origin}/auth/google/callback`);
+    const redirectUri = encodeURIComponent(`${BACKEND_URL}/auth/google/callback`);
     const scope = encodeURIComponent('email profile openid');
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=token&scope=${scope}&prompt=select_account`;
 
@@ -230,7 +232,7 @@ async function initiateGitHubSignIn() {
       throw new Error('GitHub Client ID is not configured on the server. Please add GITHUB_CLIENT_ID to the backend environment variables.');
     }
 
-    const redirectUri = encodeURIComponent(`${window.location.origin}/auth/github/callback`);
+    const redirectUri = encodeURIComponent(`${BACKEND_URL}/auth/github/callback`);
     const authUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=user:email`;
 
     const width = 550;
