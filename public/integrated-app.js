@@ -455,18 +455,97 @@ async function uploadBackupDataToCloud(parsedBackupData) {
     });
 
     if (!response.ok) {
-      const errData = await response.json();
-      throw new Error(errData.error || 'Failed to import backup data');
+      let errMsg = 'Failed to import backup data';
+      try {
+        const errData = await response.json();
+        errMsg = errData.error || errMsg;
+      } catch (jsonErr) {
+        errMsg = `Server returned status ${response.status}`;
+      }
+      throw new Error(errMsg);
     }
 
     const updatedPrompts = await response.json();
     prompts = updatedPrompts;
     localStorage.setItem(getStorageKey(), JSON.stringify(prompts));
+    
+    // Auto-populate folders from database
+    const foldersInBackup = [...new Set(prompts.map(p => p.folder).filter(f => f && f.trim() !== ''))];
+    foldersInBackup.forEach(f => {
+      if (!customFolders.includes(f)) {
+        customFolders.push(f);
+      }
+    });
+    saveCustomFolders();
+    
     render();
     showStatus('System database restored & synced to cloud!');
   } catch (error) {
-    console.error('Error importing backup:', error);
-    showStatus('Backup import failed');
+    console.error('Error importing backup via batch API:', error);
+    
+    // Fallback: Local Browser Restore (Offline/Resilient mode)
+    showStatus('Batch sync failed. Running local restoration...');
+    
+    const restoredLocalPrompts = parsedBackupData.map((p, idx) => {
+      return {
+        id: p.id ? String(p.id) : (Date.now() + idx).toString(),
+        title: p.title || 'Imported Prompt',
+        text: p.text || p.content || '',
+        category: p.category || 'Uncategorized',
+        createdAt: p.createdAt || new Date().toISOString(),
+        isPinned: p.isPinned || false,
+        useCount: p.useCount !== undefined ? Number(p.useCount) : 0,
+        folder: p.folder || ''
+      };
+    });
+    
+    prompts = restoredLocalPrompts;
+    localStorage.setItem(getStorageKey(), JSON.stringify(prompts));
+    
+    // Auto-populate folders from backup
+    const foldersInBackup = [...new Set(restoredLocalPrompts.map(p => p.folder).filter(f => f && f.trim() !== ''))];
+    foldersInBackup.forEach(f => {
+      if (!customFolders.includes(f)) {
+        customFolders.push(f);
+      }
+    });
+    saveCustomFolders();
+    
+    render();
+    showStatus('Local restore complete! Syncing to cloud...');
+    
+    // Try to sync individually
+    let successCount = 0;
+    for (const prompt of restoredLocalPrompts) {
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/prompts`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${currentAccessToken}`
+          },
+          body: JSON.stringify(prompt),
+        });
+        if (response.ok) {
+          successCount++;
+        }
+      } catch (err) {
+        console.error('Failed to sync individual prompt:', prompt, err);
+      }
+    }
+    
+    if (successCount > 0) {
+      showStatus(`Sync complete! ${successCount}/${restoredLocalPrompts.length} prompts backed up to cloud.`);
+      // Fetch latest from server to be clean
+      const serverPrompts = await fetchUserPrompts();
+      if (serverPrompts && Array.isArray(serverPrompts)) {
+        prompts = serverPrompts;
+        localStorage.setItem(getStorageKey(), JSON.stringify(prompts));
+        render();
+      }
+    } else {
+      showStatus('Local restore complete! (Offline Mode)');
+    }
   }
 }
 
