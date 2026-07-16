@@ -2,11 +2,12 @@
   "name": "oauth-login-system",
   "version": "1.0.0",
   "description": "OAuth-like login system with JWT tokens",
-  "main": "auth-server.js",
+  "main": "auth-server.ts",
+  "type": "module",
   "scripts": {
-    "start": "node auth-server.js",
+    "start": "node --experimental-strip-types auth-server.ts",
     "build": "echo 'No build step required'",
-    "dev": "nodemon auth-server.js"
+    "dev": "nodemon --exec \"node --experimental-strip-types\" auth-server.ts"
   },
   "keywords": [
     "oauth",
@@ -18,8 +19,11 @@
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^16.0.0",
+    "drizzle-kit": "^0.31.10",
+    "drizzle-orm": "^0.45.2",
     "express": "^4.18.2",
     "jsonwebtoken": "^9.0.0",
+    "pg": "^8.22.0",
     "sqlite": "^5.1.1",
     "sqlite3": "5.1.7"
   },
