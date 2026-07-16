@@ -13,10 +13,16 @@ const loginLoading = document.getElementById('loginLoading');
 const loginNameInput = document.getElementById('loginName');
 const loginEmailInput = document.getElementById('loginEmail');
 
+// Account Chooser Elements
+const accountChooserContainer = document.getElementById('accountChooserContainer');
+const manualLoginContainer = document.getElementById('manualLoginContainer');
+const addAnotherAccountBtn = document.getElementById('addAnotherAccountBtn');
+const backToAccountsBtn = document.getElementById('backToAccountsBtn');
+const disclosurePrivacyLink = document.getElementById('disclosure-privacy-link');
+const disclosureTermsLink = document.getElementById('disclosure-terms-link');
+
 let currentUser = null;
 let currentAccessToken = null;
-
-
 
 // Load auth state on page load
 function loadAuthState() {
@@ -43,7 +49,149 @@ function showApp() {
   initializeApp();
 }
 
-// Handle login form submission and switch into the app shell
+function getGoogleAvatarUrl(name) {
+  const firstLetter = (name || 'U').charAt(0).toUpperCase();
+  const colors = ['#1a73e8', '#ea4335', '#f9ab00', '#34a853'];
+  const charCode = firstLetter.charCodeAt(0);
+  const color = colors[charCode % colors.length];
+  
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+      <circle cx="64" cy="64" r="64" fill="${color}" />
+      <text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" fill="#ffffff" font-family="'Product Sans', 'Google Sans', Roboto, sans-serif" font-weight="500" font-size="64">${firstLetter}</text>
+    </svg>
+  `;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg.trim())}`;
+}
+
+// Wire up Account Chooser actions
+if (addAnotherAccountBtn) {
+  addAnotherAccountBtn.addEventListener('click', () => {
+    accountChooserContainer.classList.add('hidden');
+    manualLoginContainer.classList.remove('hidden');
+  });
+}
+
+if (backToAccountsBtn) {
+  backToAccountsBtn.addEventListener('click', () => {
+    manualLoginContainer.classList.add('hidden');
+    accountChooserContainer.classList.remove('hidden');
+    loginErrorMsg.style.display = 'none';
+  });
+}
+
+if (disclosurePrivacyLink) {
+  disclosurePrivacyLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    alert('Privacy Policy: Prompt Saver stores your workspace and active sessions locally on this machine and synchronizes securely with your personal database profile.');
+  });
+}
+
+if (disclosureTermsLink) {
+  disclosureTermsLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    alert('Terms of Service: Prompt Saver is a secure offline-first workspace helper designed to keep your creative assets accessible and highly organized.');
+  });
+}
+
+// Real Google Sign-In Action
+const realGoogleSignInBtn = document.getElementById('realGoogleSignInBtn');
+
+if (realGoogleSignInBtn) {
+  realGoogleSignInBtn.addEventListener('click', () => {
+    loginErrorMsg.style.display = 'none';
+    loginSuccessMsg.style.display = 'none';
+    
+    const client_id = "276434759121-87rfkcqrjhpo5fdp4k9d3iudg3t7b95u.apps.googleusercontent.com";
+    const redirect_uri = `${window.location.origin}/auth/google/callback`;
+    const scope = "openid email profile";
+    
+    const width = 500;
+    const height = 620;
+    const left = (window.screen.width - width) / 2;
+    const top = (window.screen.height - height) / 2;
+    
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` + 
+      `client_id=${encodeURIComponent(client_id)}` +
+      `&redirect_uri=${encodeURIComponent(redirect_uri)}` +
+      `&response_type=token` +
+      `&scope=${encodeURIComponent(scope)}` +
+      `&prompt=select_account`;
+      
+    window.open(
+      authUrl,
+      'google_oauth_popup',
+      `width=${width},height=${height},top=${top},left=${left},resizable=yes,scrollbars=yes`
+    );
+  });
+}
+
+// Listen for message from Google Sign-In popup callback window
+window.addEventListener('message', async (event) => {
+  const origin = event.origin;
+  if (!origin.endsWith('.run.app') && !origin.includes('localhost')) {
+    return;
+  }
+  
+  if (event.data?.type === 'GOOGLE_OAUTH_SUCCESS') {
+    const { user } = event.data;
+    if (!user || !user.email) return;
+    
+    loginErrorMsg.style.display = 'none';
+    loginSuccessMsg.style.display = 'none';
+    loginLoading.style.display = 'block';
+    accountChooserContainer.style.opacity = '0.5';
+    
+    try {
+      // Exchange Google profile for App session tokens
+      const authRes = await fetch(`${BACKEND_URL}/oauth/authorize`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: user.email, name: user.name || user.email }),
+      });
+
+      const authData = await authRes.json();
+      if (!authRes.ok) throw new Error(authData.error || 'Authorization failed');
+
+      const tokenRes = await fetch(`${BACKEND_URL}/oauth/token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ authCode: authData.authCode }),
+      });
+
+      const tokenData = await tokenRes.json();
+      if (!tokenRes.ok) throw new Error(tokenData.error || 'Token exchange failed');
+
+      // Attach the Google avatar picture if available
+      if (user.picture) {
+        tokenData.user.picture = user.picture;
+      }
+
+      localStorage.setItem('accessToken', tokenData.accessToken);
+      localStorage.setItem('refreshToken', tokenData.refreshToken);
+      localStorage.setItem('user', JSON.stringify(tokenData.user));
+
+      currentAccessToken = tokenData.accessToken;
+      currentUser = tokenData.user;
+
+      loginSuccessMsg.textContent = `Welcome back, ${currentUser.name}! Redirecting...`;
+      loginSuccessMsg.style.display = 'block';
+
+      setTimeout(() => {
+        showApp();
+        accountChooserContainer.style.opacity = '1';
+        loginLoading.style.display = 'none';
+      }, 600);
+    } catch (error) {
+      accountChooserContainer.style.opacity = '1';
+      loginLoading.style.display = 'none';
+      loginErrorMsg.textContent = `Google Sign-In Error: ${error.message}`;
+      loginErrorMsg.style.display = 'block';
+    }
+  }
+});
+
+// Handle custom login form submission and switch into the app shell
 loginForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   loginErrorMsg.style.display = 'none';
@@ -368,7 +516,10 @@ function setupImportFeature() {
   importBtn.type = 'button';
   importBtn.id = 'import-btn';
   importBtn.className = 'ghost-btn'; 
-  importBtn.textContent = '📥 Import Docs';
+  importBtn.style.display = 'inline-flex';
+  importBtn.style.alignItems = 'center';
+  importBtn.style.gap = '6px';
+  importBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" style="width: 14px; height: 14px;"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg><span>Import Docs</span>`;
   importBtn.style.whiteSpace = 'nowrap';
 
   searchRow.appendChild(fileInput);
@@ -587,10 +738,13 @@ function setupPremiumBackupUI() {
     backupPanel.className = 'backup-hub-panel';
     
     backupPanel.innerHTML = `
-      <div class="backup-panel-title">⚙️ System Storage Backup</div>
+      <div class="backup-panel-title" style="display: flex; align-items: center; gap: 6px;">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 14px; height: 14px; color: var(--accent);"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.43l-1.003.828c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.43l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
+        <span>System Storage Backup</span>
+      </div>
       <div class="backup-grid-actions">
-        <button type="button" class="backup-action-control export-master-btn" id="master-export-action-btn">📤 Export</button>
-        <button type="button" class="backup-action-control import-master-btn" id="master-import-action-btn">📥 Import</button>
+        <button type="button" class="backup-action-control export-master-btn" id="master-export-action-btn" style="display: flex; align-items: center; justify-content: center; gap: 6px;"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" style="width: 14px; height: 14px;"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" /></svg>Export</button>
+        <button type="button" class="backup-action-control import-master-btn" id="master-import-action-btn" style="display: flex; align-items: center; justify-content: center; gap: 6px;"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" style="width: 14px; height: 14px;"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>Import</button>
       </div>
       <input type="file" id="system-backup-file-handler" accept=".json" style="display:none;" />
     `;
@@ -743,9 +897,10 @@ function renderPrompts() {
   // Setup the titles/subtitles
   let displayTitle = activeCategory === 'all' ? 'All prompts' : `${activeCategory} prompts`;
   if (activeFolder !== 'all') {
-    displayTitle = `📁 ${activeFolder}`;
+    listTitle.innerHTML = `<span style="display: inline-flex; align-items: center; gap: 8px;"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 20px; height: 20px; color: var(--accent);"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z" /></svg><span>${activeFolder}</span></span>`;
+  } else {
+    listTitle.textContent = displayTitle;
   }
-  listTitle.textContent = displayTitle;
 
   // Let's get the filtered prompts
   const filteredPrompts = getFilteredPrompts().sort((a, b) => {
@@ -784,7 +939,10 @@ function renderPrompts() {
     manageBtn.className = 'ghost-btn';
     manageBtn.style.padding = '0.35rem 0.6rem';
     manageBtn.style.fontSize = '0.85rem';
-    manageBtn.innerHTML = '⚙️ Manage Folder';
+    manageBtn.style.display = 'inline-flex';
+    manageBtn.style.alignItems = 'center';
+    manageBtn.style.gap = '6px';
+    manageBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" style="width: 14px; height: 14px;"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.43l-1.003.828c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.43l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg><span>Manage Folder</span>`;
     manageBtn.addEventListener('click', () => {
       manageFolderOptions(activeFolder);
     });
@@ -809,7 +967,10 @@ function renderPrompts() {
       
       const icon = document.createElement('div');
       icon.className = 'folder-card-icon';
-      icon.textContent = '📁';
+      icon.style.display = 'inline-flex';
+      icon.style.alignItems = 'center';
+      icon.style.justifyContent = 'center';
+      icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 20px; height: 20px; color: var(--accent);"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z" /></svg>`;
       
       const details = document.createElement('div');
       details.className = 'folder-card-details';
@@ -841,7 +1002,10 @@ function renderPrompts() {
       manageBtn.type = 'button';
       manageBtn.className = 'ghost-btn';
       manageBtn.style.padding = '0.4rem';
-      manageBtn.textContent = '⚙️';
+      manageBtn.style.display = 'inline-flex';
+      manageBtn.style.alignItems = 'center';
+      manageBtn.style.justifyContent = 'center';
+      manageBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" style="width: 14px; height: 14px;"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.43l-1.003.828c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.43l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>`;
       manageBtn.title = 'Manage folder';
       
       manageBtn.addEventListener('click', (e) => {
@@ -935,12 +1099,15 @@ function renderPrompts() {
     const folderBtn = document.createElement('button');
     folderBtn.type = 'button';
     folderBtn.className = 'prompt-folder-btn';
+    folderBtn.style.display = 'inline-flex';
+    folderBtn.style.alignItems = 'center';
+    folderBtn.style.gap = '6px';
     if (prompt.folder) {
-      folderBtn.innerHTML = `📁 <span class="folder-name-text">${prompt.folder}</span>`;
+      folderBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" style="width: 14px; height: 14px; color: var(--accent);"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z" /></svg><span class="folder-name-text">${prompt.folder}</span>`;
       folderBtn.title = `Change folder (currently in: ${prompt.folder})`;
       folderBtn.classList.add('in-folder');
     } else {
-      folderBtn.innerHTML = `📁 <span class="folder-name-text">Move to Folder</span>`;
+      folderBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" style="width: 14px; height: 14px;"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z" /></svg><span class="folder-name-text">Move to Folder</span>`;
       folderBtn.title = "Assign this prompt to a folder";
     }
 
@@ -1066,7 +1233,10 @@ async function openMoveToFolderModal(promptId) {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = `folder-select-item ${prompt.folder === f ? 'active' : ''}`;
-      btn.innerHTML = `<span>📁 ${f}</span> ${prompt.folder === f ? '<span>✓ Selected</span>' : ''}`;
+      btn.style.display = 'flex';
+      btn.style.alignItems = 'center';
+      btn.style.justifyContent = 'space-between';
+      btn.innerHTML = `<span style="display: flex; align-items: center; gap: 6px;"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 14px; height: 14px; color: var(--accent);"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z" /></svg><span>${f}</span></span> ${prompt.folder === f ? '<span>✓ Selected</span>' : ''}`;
       btn.addEventListener('click', async () => {
         await movePromptToFolder(promptId, f);
         folderModalOverlay.classList.add('hidden');
@@ -1267,7 +1437,10 @@ function renderFolders() {
     button.type = 'button';
     button.className = `category-pill ${activeFolder === folder ? 'active' : ''}`;
     button.style.flex = '1';
-    button.innerHTML = '<span>📁 ' + folder + '</span><strong>' + count + '</strong>';
+    button.style.display = 'flex';
+    button.style.alignItems = 'center';
+    button.style.justifyContent = 'space-between';
+    button.innerHTML = `<span style="display: flex; align-items: center;"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 14px; height: 14px; margin-right: 0.35rem; color: var(--accent);"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z" /></svg>${folder}</span><strong>${count}</strong>`;
     button.addEventListener('click', () => {
       activeFolder = folder;
       render();
@@ -1279,7 +1452,10 @@ function renderFolders() {
     optionsBtn.className = 'ghost-btn';
     optionsBtn.style.padding = '0.35rem';
     optionsBtn.style.fontSize = '0.9rem';
-    optionsBtn.textContent = '⚙️';
+    optionsBtn.style.display = 'inline-flex';
+    optionsBtn.style.alignItems = 'center';
+    optionsBtn.style.justifyContent = 'center';
+    optionsBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" style="width: 14px; height: 14px;"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.43l-1.003.828c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.43l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>`;
     optionsBtn.title = 'Manage folder';
     optionsBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -1296,7 +1472,7 @@ function renderUserProfile() {
     userProfileCard.classList.remove('hidden');
     userNameMini.textContent = currentUser.name || 'User';
     userEmailMini.textContent = currentUser.email || '';
-    userAvatarMini.src = currentUser.picture || 'https://www.gravatar.com/avatar?d=mp';
+    userAvatarMini.src = currentUser.picture || getGoogleAvatarUrl(currentUser.name);
     setupPremiumBackupUI(); 
   }
 }
@@ -1657,7 +1833,10 @@ const COMPACT_MODE_STORAGE_KEY = 'prompt-saver-compact-mode';
 function applyCompactMode(isCompact) {
   appShell.classList.toggle('compact-mode', isCompact);
   compactModeToggleBtn.classList.toggle('active', isCompact);
-  compactModeToggleBtn.textContent = isCompact ? '🗔 Exit Compact' : '🗔 Compact';
+  const textSpan = compactModeToggleBtn.querySelector('span');
+  if (textSpan) {
+    textSpan.textContent = isCompact ? 'Exit Compact' : 'Compact';
+  }
 }
 
 function toggleCompactMode() {
@@ -1721,7 +1900,7 @@ clearFolderFilterButton.addEventListener('click', () => {
   render();
 });
 sidebarAddFolderBtn.addEventListener('click', async () => {
-  const newName = await showCustomInput('📁 New Folder', 'Enter folder name:');
+  const newName = await showCustomInput('New Folder', 'Enter folder name:');
   if (newName) {
     if (!customFolders.includes(newName)) {
       customFolders.push(newName);

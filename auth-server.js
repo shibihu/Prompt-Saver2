@@ -77,6 +77,102 @@ async function getUserPromptsByEmail(email, name) {
 }
 
 // Routes
+app.get(['/auth/google/callback', '/auth/google/callback/'], (req, res) => {
+  res.send(`
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Google Sign In Callback</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f172a;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+    .container {
+      text-align: center;
+      padding: 40px;
+      background: #1e293b;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+      max-width: 320px;
+      width: 100%;
+    }
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid rgba(255, 255, 255, 0.1);
+      border-top-color: #5b8cff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 20px auto;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="spinner"></div>
+    <h2 style="font-size: 18px; font-weight: 600; margin: 0 0 8px 0;">Google Sign In</h2>
+    <p style="color: #94a3b8; font-size: 14px; margin: 0; line-height: 1.5;">Securing your workspace...</p>
+  </div>
+  <script>
+    // Extract access token from URL hash fragment
+    const hash = window.location.hash.substring(1);
+    const params = new URLSearchParams(hash);
+    const accessToken = params.get('access_token');
+    
+    if (accessToken) {
+      fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: {
+          'Authorization': 'Bearer ' + accessToken
+        }
+      })
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to fetch user profile from Google');
+        return res.json();
+      })
+      .then(user => {
+        if (window.opener) {
+          window.opener.postMessage({
+            type: 'GOOGLE_OAUTH_SUCCESS',
+            user: {
+              email: user.email,
+              name: user.name,
+              picture: user.picture
+            },
+            googleAccessToken: accessToken
+          }, '*');
+          window.close();
+        } else {
+          document.querySelector('h2').textContent = 'Sign In Completed';
+          document.querySelector('p').textContent = 'You can safely close this window.';
+        }
+      })
+      .catch(err => {
+        document.querySelector('h2').textContent = 'Authentication Error';
+        document.querySelector('p').textContent = err.message;
+        document.querySelector('.spinner').style.display = 'none';
+      });
+    } else {
+      document.querySelector('h2').textContent = 'Authentication Failed';
+      document.querySelector('p').textContent = 'Could not find access token.';
+      document.querySelector('.spinner').style.display = 'none';
+    }
+  </script>
+</body>
+</html>
+  `);
+});
+
 app.post('/oauth/authorize', (req, res) => {
   const { email, name } = req.body;
 

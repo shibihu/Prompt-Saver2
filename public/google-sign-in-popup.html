@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign in - Google Accounts</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Roboto', arial, sans-serif;
+      background-color: #ffffff;
+      color: #202124;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    .card {
+      width: 450px;
+      padding: 40px;
+      border: 1px solid #dadce0;
+      border-radius: 8px;
+      box-sizing: border-box;
+      text-align: center;
+    }
+    @media (max-width: 450px) {
+      .card {
+        border: none;
+        width: 100%;
+        padding: 24px;
+      }
+    }
+    .google-logo {
+      display: inline-block;
+      width: 74px;
+      height: 24px;
+      margin-bottom: 16px;
+    }
+    h1 {
+      font-size: 24px;
+      font-weight: 400;
+      margin: 0 0 8px 0;
+      line-height: 1.3;
+    }
+    .subtitle {
+      font-size: 16px;
+      color: #202124;
+      margin-bottom: 30px;
+    }
+    .form-group {
+      position: relative;
+      margin-bottom: 26px;
+      text-align: left;
+    }
+    input {
+      width: 100%;
+      padding: 16px;
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+      font-size: 16px;
+      outline: none;
+      box-sizing: border-box;
+      transition: border-color 0.15s;
+    }
+    input:focus {
+      border-color: #1a73e8;
+      border-width: 2px;
+      padding: 15px; /* adjust padding for 2px border */
+    }
+    label {
+      position: absolute;
+      left: 16px;
+      top: 18px;
+      color: #5f6368;
+      pointer-events: none;
+      transition: 0.15s ease all;
+      background-color: #ffffff;
+      padding: 0 4px;
+    }
+    input:focus ~ label,
+    input:not(:placeholder-shown) ~ label {
+      top: -8px;
+      left: 10px;
+      font-size: 12px;
+      color: #1a73e8;
+    }
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 30px;
+    }
+    .create-account {
+      color: #1a73e8;
+      font-weight: 500;
+      text-decoration: none;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .create-account:hover {
+      color: #1557b0;
+    }
+    button {
+      background-color: #1a73e8;
+      color: #ffffff;
+      border: none;
+      padding: 10px 24px;
+      font-size: 14px;
+      font-weight: 500;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.15s, box-shadow 0.15s;
+    }
+    button:hover {
+      background-color: #1557b0;
+      box-shadow: 0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15);
+    }
+    button:active {
+      background-color: #1a73e8;
+    }
+    .error-msg {
+      color: #d93025;
+      font-size: 12px;
+      text-align: left;
+      margin-top: -20px;
+      margin-bottom: 20px;
+      display: none;
+    }
+    /* Loading Spinner */
+    .spinner {
+      display: none;
+      width: 24px;
+      height: 24px;
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #1a73e8;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 20px auto;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <!-- Google Logo SVG -->
+    <svg class="google-logo" viewBox="0 0 74 24" width="74" height="24">
+      <path fill="#4285F4" d="M10.24 12.16v2.66h6.58c-.26 1.51-1.74 4.41-6.58 4.41-4.19 0-7.61-3.47-7.61-7.75s3.42-7.75 7.61-7.75c2.39 0 3.99 1.05 4.9 1.93l2.11-2.11C15.44 2.19 13.04 1 10.24 1 4.58 1 0 5.58 0 11.25s4.58 10.25 10.24 10.25c5.91 0 9.84-4.16 9.84-10.02 0-.67-.07-1.18-.16-1.32H10.24z"/>
+      <path fill="#EA4335" d="M26.23 7.82c-3.14 0-5.69 2.51-5.69 5.67s2.55 5.67 5.69 5.67 5.69-2.51 5.69-5.67-2.55-5.67-5.69-5.67zm0 8.94c-1.63 0-3.05-1.34-3.05-3.27s1.42-3.27 3.05-3.27 3.05 1.34 3.05 3.27-1.42 3.27-3.05 3.27z"/>
+      <path fill="#F9BC05" d="M38.82 7.82c-3.14 0-5.69 2.51-5.69 5.67s2.55 5.67 5.69 5.67 5.69-2.51 5.69-5.67-2.55-5.67-5.69-5.67zm0 8.94c-1.63 0-3.05-1.34-3.05-3.27s1.42-3.27 3.05-3.27 3.05 1.34 3.05 3.27-1.42 3.27-3.05 3.27z"/>
+      <path fill="#4285F4" d="M51.13 7.82c-3.05 0-5.51 2.55-5.51 5.67s2.46 5.67 5.51 5.67c1.47 0 2.55-.6 3.12-1.25V19c0 2.16-1.16 3.32-3.03 3.32-1.53 0-2.48-1.1-2.83-2.01l-2.31.96c.67 1.6 2.42 3.47 5.14 3.47 3.01 0 5.54-1.78 5.54-5.91V8.12h-2.57v1.07c-.55-.65-1.63-1.37-3.06-1.37zm-.17 8.94c-1.6 0-2.92-1.34-2.92-3.25 0-1.94 1.32-3.27 2.92-3.27 1.58 0 2.81 1.34 2.81 3.27.02 1.91-1.21 3.25-2.81 3.25z"/>
+      <path fill="#34A853" d="M59.45 1.48h2.68v17.22h-2.68V1.48z"/>
+      <path fill="#EA4335" d="M69.04 7.82c-2.61 0-4.8 1.18-5.96 3.73l2.48 1.03c.69-1.37 1.76-2.11 3.25-2.11 1.11 0 1.94.62 2.21 1.51l.24.62-5.71 2.36c-1.34.55-2.7 1.76-2.7 3.6 0 2.11 1.67 3.4 3.65 3.4 1.8 0 2.83-.94 3.47-1.87v1.51H74V13c0-3.37-2.52-5.18-4.96-5.18zm.13 8.94c-.98 0-1.85-.51-2.16-1.27l4.57-1.89c-.22 1.49-1.51 3.16-2.41 3.16z"/>
+    </svg>
+
+    <h1>Sign in</h1>
+    <div class="subtitle" id="subtitle">to continue to Prompt Saver</div>
+
+    <div class="error-msg" id="errorMsg"></div>
+
+    <form id="signInForm">
+      <div class="form-group" id="emailGroup">
+        <input type="email" id="email" placeholder=" " required />
+        <label for="email">Email or phone</label>
+      </div>
+
+      <div class="form-group" id="nameGroup" style="display: none;">
+        <input type="text" id="name" placeholder=" " />
+        <label for="name">Your Name</label>
+      </div>
+
+      <div class="spinner" id="spinner"></div>
+
+      <div class="footer">
+        <span class="create-account" id="createAccount">Create account</span>
+        <button type="submit" id="nextBtn">Next</button>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const prefilledEmail = urlParams.get('email') || '';
+    
+    const emailInput = document.getElementById('email');
+    const nameInput = document.getElementById('name');
+    const emailGroup = document.getElementById('emailGroup');
+    const nameGroup = document.getElementById('nameGroup');
+    const nextBtn = document.getElementById('nextBtn');
+    const errorMsg = document.getElementById('errorMsg');
+    const spinner = document.getElementById('spinner');
+    const createAccount = document.getElementById('createAccount');
+    const subtitle = document.getElementById('subtitle');
+
+    if (prefilledEmail) {
+      emailInput.value = prefilledEmail;
+    }
+
+    let step = 1;
+    let savedEmail = '';
+
+    document.getElementById('signInForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errorMsg.style.display = 'none';
+
+      if (step === 1) {
+        savedEmail = emailInput.value.trim();
+        if (!savedEmail) return;
+
+        // Transition to Name step if it's not a known or simple email,
+        // or just ask name to make it personalized.
+        step = 2;
+        emailGroup.style.display = 'none';
+        nameGroup.style.display = 'block';
+        nameInput.required = true;
+        
+        // Extract default name from email
+        const defaultName = savedEmail.split('@')[0];
+        nameInput.value = defaultName.charAt(0).toUpperCase() + defaultName.slice(1);
+        
+        subtitle.textContent = savedEmail;
+        nextBtn.textContent = 'Sign In';
+        nameInput.focus();
+      } else {
+        const name = nameInput.value.trim();
+        if (!name) return;
+
+        spinner.style.display = 'block';
+        nextBtn.disabled = true;
+
+        try {
+          // Talk to local auth server backend!
+          const host = window.location.origin;
+          
+          const authRes = await fetch(`${host}/oauth/authorize`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: savedEmail, name: name }),
+          });
+
+          const authData = await authRes.json();
+          if (!authRes.ok) throw new Error(authData.error || 'Authorization failed');
+
+          const tokenRes = await fetch(`${host}/oauth/token`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ authCode: authData.authCode }),
+          });
+
+          const tokenData = await tokenRes.json();
+          if (!tokenRes.ok) throw new Error(tokenData.error || 'Token exchange failed');
+
+          // Send message back and close popup
+          if (window.opener) {
+            window.opener.postMessage({
+              type: 'GOOGLE_SIGNIN_SUCCESS',
+              accessToken: tokenData.accessToken,
+              refreshToken: tokenData.refreshToken,
+              user: tokenData.user
+            }, '*');
+            window.close();
+          } else {
+            // No opener, save locally directly
+            localStorage.setItem('accessToken', tokenData.accessToken);
+            localStorage.setItem('refreshToken', tokenData.refreshToken);
+            localStorage.setItem('user', JSON.stringify(tokenData.user));
+            window.location.href = '/';
+          }
+        } catch (err) {
+          spinner.style.display = 'none';
+          nextBtn.disabled = false;
+          errorMsg.textContent = 'Error: ' + err.message;
+          errorMsg.style.display = 'block';
+        }
+      }
+    });
+
+    createAccount.addEventListener('click', () => {
+      emailInput.value = '';
+      step = 1;
+      emailGroup.style.display = 'block';
+      nameGroup.style.display = 'none';
+      nameInput.required = false;
+      subtitle.textContent = 'to continue to Prompt Saver';
+      nextBtn.textContent = 'Next';
+      emailInput.focus();
+    });
+  </script>
+</body>
+</html>
