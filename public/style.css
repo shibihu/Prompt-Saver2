@@ -1,0 +1,817 @@
+/* ==========================================================================
+   🎨 GLOBAL CONFIGURATION & DESIGN TOKENS
+   ========================================================================== */
+:root {
+  color-scheme: dark;
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --bg: #07111f;
+  --panel: rgba(11, 24, 40, 0.9);
+  --panel-strong: #14233a;
+  --border: rgba(255, 255, 255, 0.12);
+  --text: #f4f7fb;
+  --muted: #91a2b8;
+  --accent: #5b8cff;
+  --accent-strong: #3b6ef0;
+  --danger: #ff6b6b;
+  --success: #39d98a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: radial-gradient(circle at top, #17304f 0%, var(--bg) 55%, #05090f 100%);
+  color: var(--text);
+}
+
+/* ==========================================================================
+   🏢 APP LAYOUT & SHELL ARCHITECTURE
+   ========================================================================== */
+.app-shell {
+  width: min(1200px, calc(100% - 2rem));
+  margin: 1.25rem auto 2rem;
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 1rem;
+}
+
+.sidebar,
+.main-panel {
+  display: grid;
+  gap: 1rem;
+}
+
+/* Core Functional Containers */
+.sidebar-card,
+.add-section,
+.search-section,
+.list-section {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 1rem;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.18);
+}
+
+/* Header Context Features */
+.hero-card {
+  background: linear-gradient(135deg, rgba(91, 140, 255, 0.22), rgba(59, 110, 240, 0.16));
+}
+
+.eyebrow {
+  margin: 0 0 0.35rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 0.75rem;
+  color: #8fb0ff;
+}
+
+h1, h2, h3, p {
+  margin: 0;
+}
+
+h1 {
+  font-size: clamp(1.4rem, 2.4vw, 1.9rem);
+  margin-bottom: 0.5rem;
+}
+
+.hero-copy {
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.sidebar-heading,
+.list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+}
+
+.sidebar-heading h2 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.account-heading-actions {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* ==========================================================================
+   💎 PREMIUM USER CARD & STORAGE BACKUP HUB
+   ========================================================================== */
+.user-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 1.5rem 1.25rem;
+  border-radius: 24px;
+  background: linear-gradient(145deg, rgba(20, 35, 58, 0.8), rgba(7, 17, 31, 0.95));
+  border: 1px solid rgba(91, 140, 255, 0.25);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  position: relative;
+  overflow: hidden;
+  gap: 0.85rem;
+}
+
+.user-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(91, 140, 255, 0.08) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.user-avatar {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid var(--accent);
+  box-shadow: 0 0 18px rgba(91, 140, 255, 0.45);
+  transition: transform 0.3s ease;
+}
+
+.user-card:hover .user-avatar {
+  transform: scale(1.05) rotate(3deg);
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  width: 100%;
+}
+
+.user-name {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.02em;
+}
+
+.user-email {
+  font-size: 0.82rem;
+  color: var(--muted);
+  word-break: break-all;
+}
+
+/* Premium System Storage Control Panels */
+.backup-hub-panel {
+  margin-top: 0.5rem;
+  padding: 1.1rem;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  display: grid;
+  gap: 0.75rem;
+}
+
+.backup-panel-title {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.backup-grid-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+}
+
+.backup-action-control {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 0.65rem 0.85rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  cursor: pointer;
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.backup-action-control.export-master-btn:hover {
+  background: rgba(91, 140, 255, 0.15);
+  border-color: var(--accent);
+  color: #a9c2ff;
+  box-shadow: 0 4px 12px rgba(91, 140, 255, 0.15);
+}
+
+.backup-action-control.import-master-btn:hover {
+  background: rgba(57, 217, 138, 0.15);
+  border-color: var(--success);
+  color: #86f0b7;
+  box-shadow: 0 4px 12px rgba(57, 217, 138, 0.15);
+}
+
+/* ==========================================================================
+   📊 NAVIGATION, STATS, & FILTER PILLS
+   ========================================================================== */
+.category-list {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.category-pill {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  padding: 0.7rem 0.8rem;
+  cursor: pointer;
+}
+
+.category-pill.active {
+  background: rgba(91, 140, 255, 0.18);
+  border-color: rgba(91, 140, 255, 0.4);
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.stats-grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.7rem;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.stats-grid strong {
+  font-size: 1.1rem;
+}
+
+.stats-grid span {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+/* Auth Settings Utility */
+.auth-card {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.config-label {
+  display: grid;
+  gap: 0.35rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.google-button {
+  min-height: 44px;
+}
+
+.auth-status {
+  color: var(--muted);
+  line-height: 1.45;
+  font-size: 0.92rem;
+}
+
+/* ==========================================================================
+   📝 FORM COMPONENT INTERACTIONS
+   ========================================================================== */
+form {
+  display: grid;
+  gap: 0.8rem;
+}
+
+input, textarea, select, button {
+  font: inherit;
+}
+
+input, textarea, select {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.85rem 0.95rem;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+  outline: none;
+}
+
+input:focus, textarea:focus, select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(91, 140, 255, 0.18);
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 0.75rem;
+}
+
+textarea {
+  resize: vertical;
+  min-height: 130px;
+}
+
+.form-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+/* Interactive Action Triggers */
+button {
+  cursor: pointer;
+  border: 0;
+  border-radius: 999px;
+  padding: 0.8rem 1rem;
+  transition: transform 180ms ease, background 180ms ease;
+}
+
+button:hover {
+  transform: translateY(-1px);
+}
+
+#save-btn {
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  color: white;
+}
+
+#cancel-edit {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text);
+}
+
+.ghost-btn {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+  padding: 0.55rem 0.8rem;
+}
+
+/* Dynamic Workspace Edit Mode Exporter Style */
+#export-edit-btn {
+  background: rgba(168, 85, 247, 0.16);
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  color: #d8b4fe;
+}
+
+#export-edit-btn:hover {
+  background: rgba(168, 85, 247, 0.28);
+  border-color: #a855f7;
+  box-shadow: 0 4px 12px rgba(168, 85, 247, 0.2);
+}
+
+.search-row {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.search-row input {
+  flex: 1;
+  min-width: 150px;
+}
+
+.status-pill {
+  min-height: 42px;
+  padding: 0.65rem 0.8rem;
+  border-radius: 999px;
+  background: rgba(57, 217, 138, 0.15);
+  color: var(--success);
+  font-size: 0.92rem;
+  white-space: nowrap;
+}
+
+.list-summary {
+  color: var(--muted);
+  font-size: 0.92rem;
+  margin-top: 0.2rem;
+}
+
+/* ==========================================================================
+   📄 FEED AND DATACARD RENDER LAYOUT
+   ========================================================================== */
+.prompt-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.8rem;
+}
+
+.prompt-card {
+  border: 1px solid var(--border);
+  background: var(--panel-strong);
+  border-radius: 16px;
+  padding: 1rem;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.prompt-card header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.prompt-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.prompt-title {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.category-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.28rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(91, 140, 255, 0.14);
+  color: #a9c2ff;
+  font-size: 0.8rem;
+}
+
+.prompt-text {
+  margin: 0;
+  color: var(--muted);
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.55;
+}
+
+.prompt-meta {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.prompt-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.prompt-actions button {
+  padding: 0.6rem 0.8rem;
+  font-size: 0.92rem;
+}
+
+.copy-btn {
+  background: rgba(57, 217, 138, 0.14);
+  color: #86f0b7;
+}
+
+.edit-btn {
+  background: rgba(91, 140, 255, 0.16);
+  color: #a9c2ff;
+}
+
+.delete-btn {
+  background: rgba(255, 107, 107, 0.18);
+  color: #ffc2c2;
+}
+
+/* Utilities */
+.empty {
+  color: var(--muted);
+  text-align: center;
+  margin: 0.75rem 0 0;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* ==========================================================================
+   🪟 PROMPT VIEW/EDIT MODAL
+   ========================================================================== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(3, 8, 16, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  z-index: 100;
+}
+
+.modal-card {
+  width: min(720px, 100%);
+  max-height: min(88vh, 820px);
+  background: var(--panel-strong);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  overflow: hidden;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-close-btn {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+  border-radius: 999px;
+  width: 2.2rem;
+  height: 2.2rem;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+}
+
+.modal-body {
+  padding: 1.25rem;
+  overflow-y: auto;
+  display: grid;
+  gap: 0.85rem;
+  align-content: start;
+}
+
+.modal-body textarea {
+  min-height: 320px;
+  resize: vertical;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  border-top: 1px solid var(--border);
+}
+
+#modal-save-btn {
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  color: white;
+}
+
+/* ==========================================================================
+   📱 ADAPTIVE RESPONSIVE MEDIA BREAKPOINTS
+   ========================================================================== */
+@media (max-width: 900px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .app-shell {
+    width: min(100% - 1rem, 1200px);
+    margin: 0.7rem auto 1rem;
+  }
+
+  .form-row,
+  .stats-grid,
+  .search-row,
+  .form-actions,
+  .prompt-actions {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+  }
+
+  .status-pill {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+  }
+}
+
+/* ==========================================================================
+   ⭐ PIN / FAVORITE SYSTEM
+   ========================================================================== */
+.account-heading-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.pin-btn {
+  background: rgba(245, 158, 11, 0.16);
+  color: #fbbf24;
+}
+
+.pin-btn.pinned {
+  background: rgba(245, 158, 11, 0.32);
+  color: #fde68a;
+}
+
+.pin-btn:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.pin-indicator {
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+/* ==========================================================================
+   ⌘ COMMAND PALETTE / QUICK SEARCH (Ctrl+K / Cmd+K)
+   ========================================================================== */
+.command-palette-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(3, 8, 16, 0.6);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 10vh 1.25rem 1.25rem;
+  z-index: 300;
+}
+
+.command-palette-card {
+  width: min(600px, 100%);
+  max-height: 70vh;
+  background: var(--panel-strong);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.55);
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  overflow: hidden;
+}
+
+.command-palette-input-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.9rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.command-palette-icon {
+  font-size: 1rem;
+  opacity: 0.7;
+}
+
+.command-palette-input-row input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-size: 1rem;
+  font-family: inherit;
+}
+
+.command-palette-input-row input::placeholder {
+  color: var(--muted);
+}
+
+.command-palette-hint {
+  font-size: 0.75rem;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.1rem 0.4rem;
+}
+
+.command-palette-results {
+  list-style: none;
+  margin: 0;
+  padding: 0.4rem;
+  overflow-y: auto;
+}
+
+.command-palette-result {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.command-palette-result.active {
+  background: rgba(91, 140, 255, 0.18);
+}
+
+.command-palette-result-title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.command-palette-result-snippet {
+  color: var(--muted);
+  font-size: 0.85rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.command-palette-empty {
+  color: var(--muted);
+  text-align: center;
+  padding: 1.5rem 1rem;
+  margin: 0;
+}
+
+.command-palette-footer {
+  display: flex;
+  gap: 1rem;
+  padding: 0.6rem 1rem;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.command-palette-footer kbd {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.05rem 0.35rem;
+  margin-right: 0.15rem;
+  font-family: inherit;
+}
+
+/* ==========================================================================
+   🗔 COMPACT SIDEBAR MODE (dock next to another app, e.g. Roblox Studio)
+   ========================================================================== */
+.app-shell.compact-mode {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 350px;
+  height: 100vh;
+  max-width: 100vw;
+  margin: 0;
+  display: block;
+  overflow-y: auto;
+  padding: 0.85rem;
+  background: var(--bg);
+  border-left: 1px solid var(--border);
+  box-shadow: -12px 0 45px rgba(0, 0, 0, 0.5);
+  z-index: 400;
+}
+
+.app-shell.compact-mode .sidebar,
+.app-shell.compact-mode .main-panel {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.app-shell.compact-mode .sidebar {
+  margin-bottom: 0.75rem;
+}
+
+.app-shell.compact-mode .sidebar-card,
+.app-shell.compact-mode .add-section,
+.app-shell.compact-mode .search-section,
+.app-shell.compact-mode .list-section {
+  padding: 0.75rem;
+  border-radius: 14px;
+}
+
+.app-shell.compact-mode .hero-card,
+.app-shell.compact-mode .stats-grid {
+  display: none;
+}
+
+#compact-mode-toggle-btn.active {
+  background: rgba(91, 140, 255, 0.3);
+  color: #cddbff;
+}

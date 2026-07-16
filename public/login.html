@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign in with Account</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+        Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .container {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+      padding: 40px;
+      max-width: 400px;
+      width: 100%;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .logo {
+      font-size: 32px;
+      font-weight: bold;
+      color: #1f2937;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      color: #6b7280;
+      font-size: 14px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      color: #1f2937;
+      font-weight: 500;
+      font-size: 14px;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 14px;
+      transition: border-color 0.3s;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .submit-btn {
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s;
+      margin-top: 10px;
+    }
+
+    .submit-btn:hover {
+      transform: translateY(-2px);
+    }
+
+    .submit-btn:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .error {
+      background-color: #fee;
+      color: #c33;
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      font-size: 14px;
+      display: none;
+    }
+
+    .success {
+      background-color: #efe;
+      color: #3c3;
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      font-size: 14px;
+      display: none;
+    }
+
+    .loading {
+      display: none;
+      text-align: center;
+      color: #667eea;
+      font-size: 14px;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid #667eea;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      margin-right: 6px;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .divider {
+      text-align: center;
+      margin: 25px 0;
+      position: relative;
+      color: #9ca3af;
+      font-size: 12px;
+    }
+
+    .divider::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: #e5e7eb;
+    }
+
+    .divider span {
+      background: white;
+      padding: 0 10px;
+      position: relative;
+    }
+
+    .footer {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 12px;
+      color: #9ca3af;
+    }
+
+    .profile {
+      display: none;
+      text-align: center;
+    }
+
+    .profile-header {
+      margin-bottom: 25px;
+    }
+
+    .profile-info {
+      background: #f3f4f6;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+
+    .profile-name {
+      font-size: 18px;
+      font-weight: 600;
+      color: #1f2937;
+      margin-bottom: 5px;
+    }
+
+    .profile-email {
+      font-size: 14px;
+      color: #6b7280;
+    }
+
+    .logout-btn {
+      width: 100%;
+      padding: 12px;
+      background: #ef4444;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .logout-btn:hover {
+      background: #dc2626;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Login Form -->
+    <div id="loginForm">
+      <div class="header">
+        <div class="logo">🔐 Auth</div>
+        <p class="subtitle">Sign in to your account</p>
+      </div>
+
+      <div id="errorMsg" class="error"></div>
+      <div id="successMsg" class="success"></div>
+
+      <form id="signInForm">
+        <div class="form-group">
+          <label for="name">Full Name</label>
+          <input
+            type="text"
+            id="name"
+            name="name"
+            placeholder="John Doe"
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="email">Email Address</label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            placeholder="you@example.com"
+            required
+          />
+        </div>
+
+        <button type="submit" class="submit-btn">Continue</button>
+
+        <div class="loading" id="loading">
+          <div class="spinner"></div>
+          Signing you in...
+        </div>
+      </form>
+
+      <div class="footer">
+        <p>This is a secure OAuth-like authorization flow</p>
+      </div>
+    </div>
+
+    <!-- User Profile -->
+    <div id="profileSection" class="profile">
+      <div class="profile-header">
+        <div class="logo">✓</div>
+        <p class="subtitle">Welcome back!</p>
+      </div>
+
+      <div class="profile-info">
+        <div class="profile-name" id="displayName"></div>
+        <div class="profile-email" id="displayEmail"></div>
+      </div>
+
+      <button class="logout-btn" id="logoutBtn">Sign Out</button>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById('signInForm');
+    const errorMsg = document.getElementById('errorMsg');
+    const successMsg = document.getElementById('successMsg');
+    const loading = document.getElementById('loading');
+    const loginForm = document.getElementById('loginForm');
+    const profileSection = document.getElementById('profileSection');
+
+    // Check if user is already logged in
+    function checkAuth() {
+      const token = localStorage.getItem('accessToken');
+      if (token) {
+        showProfile();
+      }
+    }
+
+    // Handle sign-in
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errorMsg.style.display = 'none';
+      successMsg.style.display = 'none';
+
+      const name = document.getElementById('name').value;
+      const email = document.getElementById('email').value;
+
+      loading.style.display = 'block';
+
+      try {
+        // Step 1: Request authorization
+        const authResponse = await fetch('/oauth/authorize', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, name }),
+        });
+
+        if (!authResponse.ok) {
+          throw new Error('Authorization failed');
+        }
+
+        const { authCode } = await authResponse.json();
+
+        // Step 2: Exchange code for token
+        const tokenResponse = await fetch('/oauth/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ authCode }),
+        });
+
+        if (!tokenResponse.ok) {
+          throw new Error('Token exchange failed');
+        }
+
+        const { accessToken, refreshToken, user } = await tokenResponse.json();
+
+        // Store tokens
+        localStorage.setItem('accessToken', accessToken);
+        localStorage.setItem('refreshToken', refreshToken);
+        localStorage.setItem('user', JSON.stringify(user));
+
+        successMsg.textContent = 'Sign in successful! Redirecting...';
+        successMsg.style.display = 'block';
+
+        setTimeout(() => {
+          showProfile();
+        }, 1000);
+      } catch (error) {
+        errorMsg.textContent = `Error: ${error.message}`;
+        errorMsg.style.display = 'block';
+      } finally {
+        loading.style.display = 'none';
+      }
+    });
+
+    // Show profile
+    function showProfile() {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      document.getElementById('displayName').textContent = user.name;
+      document.getElementById('displayEmail').textContent = user.email;
+
+      loginForm.style.display = 'none';
+      profileSection.style.display = 'block';
+    }
+
+    // Handle logout
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      const token = localStorage.getItem('accessToken');
+
+      try {
+        await fetch('/api/logout', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+      } catch (error) {
+        console.error('Logout error:', error);
+      }
+
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('user');
+
+      loginForm.style.display = 'block';
+      profileSection.style.display = 'none';
+      form.reset();
+    });
+
+    // Check authentication on page load
+    checkAuth();
+  </script>
+</body>
+</html>

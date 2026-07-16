@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Prompt Saver</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* Login Styles */
+    .login-wrapper {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    .login-container {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+      padding: 40px;
+      max-width: 400px;
+      width: 100%;
+    }
+
+    .login-header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .login-logo {
+      font-size: 32px;
+      font-weight: bold;
+      color: #1f2937;
+      margin-bottom: 10px;
+    }
+
+    .login-subtitle {
+      color: #6b7280;
+      font-size: 14px;
+    }
+
+    .login-form-group {
+      margin-bottom: 20px;
+    }
+
+    .login-label {
+      display: block;
+      margin-bottom: 8px;
+      color: #1f2937;
+      font-weight: 500;
+      font-size: 14px;
+    }
+
+    .login-input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 14px;
+      transition: border-color 0.3s;
+    }
+
+    .login-input:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .login-submit-btn {
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s;
+      margin-top: 10px;
+    }
+
+    .login-submit-btn:hover {
+      transform: translateY(-2px);
+    }
+
+    .login-submit-btn:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .login-error {
+      background-color: #fee;
+      color: #c33;
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      font-size: 14px;
+      display: none;
+    }
+
+    .login-success {
+      background-color: #efe;
+      color: #3c3;
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      font-size: 14px;
+      display: none;
+    }
+
+    .login-loading {
+      display: none;
+      text-align: center;
+      color: #667eea;
+      font-size: 14px;
+    }
+
+    .login-spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid #667eea;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      margin-right: 6px;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .app-shell.hidden {
+      display: none;
+    }
+
+    .login-wrapper.hidden {
+      display: none;
+    }
+
+    .user-profile-mini {
+      background: #f3f4f6;
+      padding: 10px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    .user-avatar-mini {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #d1d5db;
+    }
+
+    .user-info-mini {
+      flex: 1;
+    }
+
+    .user-name-mini {
+      font-weight: 600;
+      font-size: 14px;
+      color: #1f2937;
+    }
+
+    .user-email-mini {
+      font-size: 12px;
+      color: #6b7280;
+    }
+
+    .switch-account-btn {
+      width: 100%;
+      padding: 8px;
+      background: #ef4444;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .switch-account-btn:hover {
+      background: #dc2626;
+    }
+
+    /* 🎨 เพิ่มเติมส่วนของสไตล์ระบบใหม่ */
+    .pinned-card {
+      border-left: 4px solid #f59e0b !important;
+      background: rgba(245, 158, 11, 0.07) !important;
+    }
+
+    #optimize-btn {
+      background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    #optimize-btn:hover {
+      opacity: 0.9;
+    }
+
+    #optimize-btn:disabled {
+      background: #9ca3af;
+      cursor: not-allowed;
+    }
+
+    .backup-buttons {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .backup-btn {
+      flex: 1;
+      padding: 8px 12px;
+      font-size: 13px;
+      font-weight: 500;
+      border-radius: 6px;
+      border: 1px solid #d1d5db;
+      background: white;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: background 0.2s;
+    }
+
+    .backup-btn:hover {
+      background: #f9fafb;
+    }
+  </style>
+</head>
+<body>
+  <!-- Login Section -->
+  <div id="loginWrapper" class="login-wrapper">
+    <div class="login-container">
+      <div class="login-header">
+        <div class="login-logo">🔐 Prompt Saver</div>
+        <p class="login-subtitle">Sign in to save and sync your prompts</p>
+      </div>
+
+      <div id="loginErrorMsg" class="login-error"></div>
+      <div id="loginSuccessMsg" class="login-success"></div>
+
+      <form id="loginSignInForm">
+        <div class="login-form-group">
+          <label class="login-label" for="loginName">Full Name</label>
+          <input
+            class="login-input"
+            type="text"
+            id="loginName"
+            name="name"
+            placeholder="John Doe"
+            required
+          />
+        </div>
+
+        <div class="login-form-group">
+          <label class="login-label" for="loginEmail">Email Address</label>
+          <input
+            class="login-input"
+            type="email"
+            id="loginEmail"
+            name="email"
+            placeholder="you@example.com"
+            required
+          />
+        </div>
+
+        <button type="submit" class="login-submit-btn">Sign In</button>
+
+        <div class="login-loading" id="loginLoading">
+          <div class="login-spinner"></div>
+          Signing you in...
+        </div>
+      </form>
+
+      <p style="text-align: center; margin-top: 20px; font-size: 12px; color: #9ca3af;">
+        Your prompts will be securely saved to your account
+      </p>
+    </div>
+  </div>
+
+  <!-- App Section -->
+  <div id="appShell" class="app-shell hidden">
+    <aside class="sidebar">
+      <div class="sidebar-card hero-card">
+        <p class="eyebrow">Prompt hub</p>
+        <h1>Prompt Saver</h1>
+        <p class="hero-copy">Save, sort, and reuse your best prompts in a calm and focused workspace.</p>
+      </div>
+
+      <div class="sidebar-card auth-card">
+        <div class="sidebar-heading">
+          <h2>Account</h2>
+          <div class="account-heading-actions">
+            <button id="compact-mode-toggle-btn" type="button" class="ghost-btn" title="Toggle Sidebar Mode">🗔 Compact</button>
+            <button id="sign-out-btn" type="button" class="ghost-btn">Switch Account</button>
+          </div>
+        </div>
+        <div id="user-profile-card" class="user-profile-mini hidden">
+          <img id="user-avatar-mini" class="user-avatar-mini" alt="User" />
+          <div class="user-info-mini">
+            <div class="user-name-mini" id="user-name-mini"></div>
+            <div class="user-email-mini" id="user-email-mini"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sidebar-card">
+        <div class="sidebar-heading">
+          <h2>Categories</h2>
+          <button id="clear-category-filter" type="button" class="ghost-btn">All</button>
+        </div>
+        <div id="category-list" class="category-list"></div>
+      </div>
+
+      <div class="sidebar-card">
+        <h2>Quick stats</h2>
+        <div class="stats-grid">
+          <div>
+            <strong id="total-count">0</strong>
+            <span>Total</span>
+          </div>
+          <div>
+            <strong id="active-count">0</strong>
+            <span>Visible</span>
+          </div>
+          <div>
+            <strong id="category-count">0</strong>
+            <span>Groups</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main-panel">
+      <section class="add-section">
+        <form id="prompt-form">
+          <div class="form-row">
+            <input id="prompt-title" type="text" placeholder="Title (optional)" />
+            <input id="prompt-category" type="text" placeholder="Category (optional)" />
+          </div>
+          <select id="category-select" aria-label="Choose existing category">
+            <option value="">Choose existing category</option>
+          </select>
+          <textarea id="prompt-text" rows="6" placeholder="Write or paste your prompt here..."></textarea>
+          <div class="form-actions">
+            <button id="save-btn" type="submit">Save Prompt</button>
+            <!-- ฟีเจอร์ใหม่: เพิ่มปุ่ม AI Optimizer ตรงนี้เพื่อให้เรียกใช้ฟังก์ชันเกลาคำศัพท์ได้สะดวก -->
+            <button id="optimize-btn" type="button">✨ Optimize Prompt</button>
+            <button id="cancel-edit" type="button" class="hidden">Cancel Edit</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="search-section">
+        <div class="search-row">
+          <input id="search-input" type="search" placeholder="Search prompts or categories..." />
+          <button id="command-palette-btn" type="button" class="ghost-btn" title="Quick search (Ctrl+K / Cmd+K)">🔎 Quick Search</button>
+          <div id="copy-status" class="status-pill" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <section class="list-section">
+        <div class="list-header">
+          <div>
+            <h2 id="list-title">All prompts</h2>
+            <p id="list-summary" class="list-summary">0 prompts</p>
+          </div>
+        </div>
+        <ul id="prompt-list" class="prompt-list"></ul>
+        <p id="empty-message" class="empty">No prompts saved yet.</p>
+      </section>
+    </main>
+  </div>
+
+  <!-- Prompt View/Edit Modal: keeps the list compact and moves long prompt text to its own view -->
+  <div id="editModalOverlay" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>Edit Prompt</h2>
+        <button type="button" id="modal-close-btn" class="modal-close-btn" aria-label="Close">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-row">
+          <input id="modal-prompt-title" type="text" placeholder="Title (optional)" />
+          <input id="modal-prompt-category" type="text" placeholder="Category (optional)" />
+        </div>
+        <textarea id="modal-prompt-text" rows="14" placeholder="Write or paste your prompt here..."></textarea>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="modal-cancel-btn" class="ghost-btn">Cancel</button>
+        <button type="button" id="modal-save-btn">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Command Palette: Ctrl+K / Cmd+K quick search + jump-to-copy -->
+  <div id="commandPaletteOverlay" class="command-palette-overlay hidden">
+    <div class="command-palette-card">
+      <div class="command-palette-input-row">
+        <span class="command-palette-icon">🔎</span>
+        <input
+          id="command-palette-input"
+          type="text"
+          placeholder="Search prompts by title, content, or category..."
+          autocomplete="off"
+        />
+        <span class="command-palette-hint">Esc</span>
+      </div>
+      <ul id="command-palette-results" class="command-palette-results"></ul>
+      <p id="command-palette-empty" class="command-palette-empty hidden">No matching prompts</p>
+      <div class="command-palette-footer">
+        <span><kbd>↑</kbd><kbd>↓</kbd> Navigate</span>
+        <span><kbd>Enter</kbd> Copy</span>
+        <span><kbd>Esc</kbd> Close</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Custom Confirmation Modal (Iframe-safe alternative to window.confirm) -->
+  <div id="confirmModalOverlay" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 440px; min-height: auto;">
+      <div class="modal-header">
+        <h2 id="confirm-modal-title">Are you sure?</h2>
+        <button type="button" id="confirm-modal-close-btn" class="modal-close-btn" aria-label="Close">✕</button>
+      </div>
+      <div class="modal-body" style="padding: 1.5rem 1.25rem;">
+        <p id="confirm-modal-message" style="color: var(--muted); line-height: 1.5; margin: 0;"></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="confirm-modal-cancel-btn" class="ghost-btn">Cancel</button>
+        <button type="button" id="confirm-modal-confirm-btn" class="delete-btn">Delete</button>
+      </div>
+    </div>
+  </div>
+  
+<script src="integrated-app.js"></script>
+</body>
+</html>

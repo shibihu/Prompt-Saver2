@@ -1,0 +1,9 @@
+node_modules/
+.env
+*.db
+*.db-journal
+database.db
+.DS_Store
+dist/
+tmp_git/
+metadata.json
