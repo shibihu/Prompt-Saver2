@@ -32,6 +32,7 @@ async function initDatabase() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       is_pinned INTEGER DEFAULT 0,
       use_count INTEGER DEFAULT 0,
+      folder TEXT,
       FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
     )
   `);
@@ -45,6 +46,12 @@ async function initDatabase() {
 
   try {
     await db.exec(`ALTER TABLE prompts ADD COLUMN use_count INTEGER DEFAULT 0`);
+  } catch (err) {
+    // คอลัมน์อาจจะอยู่แล้ว ข้ามเลย
+  }
+
+  try {
+    await db.exec(`ALTER TABLE prompts ADD COLUMN folder TEXT`);
   } catch (err) {
     // คอลัมน์อาจจะอยู่แล้ว ข้ามเลย
   }

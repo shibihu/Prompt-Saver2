@@ -331,6 +331,17 @@
         <div id="category-list" class="category-list"></div>
       </div>
 
+      <div class="sidebar-card" id="folders-sidebar-card">
+        <div class="sidebar-heading">
+          <h2>Folders</h2>
+          <button id="clear-folder-filter" type="button" class="ghost-btn">All</button>
+        </div>
+        <div id="folder-list" class="category-list"></div>
+        <button id="sidebar-add-folder-btn" type="button" class="backup-btn" style="width: 100%; margin-top: 10px;">
+          📁 New Folder
+        </button>
+      </div>
+
       <div class="sidebar-card">
         <h2>Quick stats</h2>
         <div class="stats-grid">
@@ -452,6 +463,60 @@
     </div>
   </div>
 
-  <script src="public/integrated-app.js"></script>
+  <!-- Custom Folder Creation/Move Modal -->
+  <div id="folderModalOverlay" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 440px;">
+      <div class="modal-header">
+        <h2 id="folder-modal-title">📁 Move to Folder</h2>
+        <button type="button" id="folder-modal-close-btn" class="modal-close-btn" aria-label="Close">✕</button>
+      </div>
+      <div class="modal-body" style="padding: 1.25rem;">
+        <p id="folder-modal-prompt-title" style="font-size: 0.9rem; color: var(--muted); margin-bottom: 1rem;"></p>
+        
+        <!-- Create New Folder Section -->
+        <div style="margin-bottom: 1.25rem;">
+          <label style="display: block; font-size: 0.85rem; font-weight: 500; margin-bottom: 0.5rem; color: var(--text);">Create New Folder:</label>
+          <div style="display: flex; gap: 0.5rem;">
+            <input id="new-folder-input" type="text" placeholder="Folder name..." style="flex: 1; padding: 8px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 0.9rem;" />
+            <button id="create-folder-btn" type="button" style="padding: 8px 14px; background: var(--accent); color: white; border: none; border-radius: 6px; font-weight: 500; cursor: pointer;">Create</button>
+          </div>
+        </div>
+        
+        <hr style="border: 0; border-top: 1px solid var(--border); margin: 1.25rem 0;" />
+        
+        <!-- Existing Folders Section -->
+        <div>
+          <label style="display: block; font-size: 0.85rem; font-weight: 500; margin-bottom: 0.5rem; color: var(--text);">Move to Existing Folder:</label>
+          <ul id="existing-folders-list" style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.5rem; max-height: 200px; overflow-y: auto;">
+            <!-- Will be populated dynamically -->
+          </ul>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="folder-modal-remove-btn" type="button" class="delete-btn" style="margin-right: auto; background: rgba(255, 107, 107, 0.15); color: var(--danger); border: 1px solid rgba(255, 107, 107, 0.3);">Remove from Folder</button>
+        <button id="folder-modal-cancel-btn" type="button" class="ghost-btn">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Custom Input Dialog Modal (Iframe-safe alternative to window.prompt) -->
+  <div id="inputModalOverlay" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 400px; min-height: auto;">
+      <div class="modal-header">
+        <h2 id="input-modal-title">New Folder</h2>
+        <button type="button" id="input-modal-close-btn" class="modal-close-btn" aria-label="Close">✕</button>
+      </div>
+      <div class="modal-body" style="padding: 1.25rem;">
+        <p id="input-modal-message" style="color: var(--muted); margin-bottom: 0.75rem; font-size: 0.9rem;"></p>
+        <input id="custom-modal-input" type="text" style="width: 100%; padding: 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 0.95rem;" />
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="input-modal-cancel-btn" class="ghost-btn">Cancel</button>
+        <button type="button" id="input-modal-submit-btn" style="padding: 8px 16px; background: var(--accent); color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;">Create</button>
+      </div>
+    </div>
+  </div>
+  
+<script src="integrated-app.js"></script>
 </body>
 </html>

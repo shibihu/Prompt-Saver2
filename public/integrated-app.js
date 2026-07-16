@@ -144,10 +144,65 @@ const modalSaveBtn = document.getElementById('modal-save-btn');
 const modalCancelBtn = document.getElementById('modal-cancel-btn');
 const modalCloseBtn = document.getElementById('modal-close-btn');
 
+// Folder Organizer & custom input modal elements
+const clearFolderFilterButton = document.getElementById('clear-folder-filter');
+const folderList = document.getElementById('folder-list');
+const sidebarAddFolderBtn = document.getElementById('sidebar-add-folder-btn');
+
+const folderModalOverlay = document.getElementById('folderModalOverlay');
+const folderModalPromptTitle = document.getElementById('folder-modal-prompt-title');
+const newFolderInput = document.getElementById('new-folder-input');
+const existingFoldersList = document.getElementById('existing-folders-list');
+let folderModalTitle = document.getElementById('folder-modal-title');
+let folderModalCloseBtn = document.getElementById('folder-modal-close-btn');
+let folderModalCancelBtn = document.getElementById('folder-modal-cancel-btn');
+let folderModalRemoveBtn = document.getElementById('folder-modal-remove-btn');
+let createFolderBtn = document.getElementById('create-folder-btn');
+
+const inputModalOverlay = document.getElementById('inputModalOverlay');
+const inputModalTitle = document.getElementById('input-modal-title');
+const inputModalMessage = document.getElementById('input-modal-message');
+const customModalInput = document.getElementById('custom-modal-input');
+const inputModalCloseBtn = document.getElementById('input-modal-close-btn');
+const inputModalCancelBtn = document.getElementById('input-modal-cancel-btn');
+const inputModalSubmitBtn = document.getElementById('input-modal-submit-btn');
+
 let prompts = [];
 let editingId = null;
 let modalEditingId = null;
 let activeCategory = 'all';
+let activeFolder = 'all';
+let customFolders = [];
+
+function loadCustomFolders() {
+  try {
+    const key = `custom_folders_${currentUser ? currentUser.email : 'local'}`;
+    const stored = localStorage.getItem(key);
+    customFolders = stored ? JSON.parse(stored) : [];
+  } catch (err) {
+    customFolders = [];
+  }
+}
+
+function saveCustomFolders() {
+  try {
+    const key = `custom_folders_${currentUser ? currentUser.email : 'local'}`;
+    localStorage.setItem(key, JSON.stringify(customFolders));
+  } catch (err) {}
+}
+
+function getFolders() {
+  const folderSet = new Set();
+  customFolders.forEach(f => {
+    if (f && f.trim()) folderSet.add(f.trim());
+  });
+  prompts.forEach((p) => {
+    if (p.folder && p.folder.trim()) {
+      folderSet.add(p.folder.trim());
+    }
+  });
+  return Array.from(folderSet).sort();
+}
 
 // Prevents overlapping toggle-pin requests for the same prompt (race condition guard)
 const pendingPinIds = new Set();
@@ -584,10 +639,12 @@ function getFilteredPrompts() {
   const query = searchInput.value.trim().toLowerCase();
   return prompts.filter((prompt) => {
     const categoryName = getCategoryName(prompt);
-    const haystack = `${prompt.title} ${prompt.text} ${categoryName}`.toLowerCase();
+    const folderName = prompt.folder || '';
+    const haystack = `${prompt.title} ${prompt.text} ${categoryName} ${folderName}`.toLowerCase();
     const matchesQuery = haystack.includes(query);
     const matchesCategory = prompt.isPinned || activeCategory === 'all' || categoryName === activeCategory;
-    return matchesQuery && matchesCategory;
+    const matchesFolder = prompt.isPinned || activeFolder === 'all' || folderName === activeFolder;
+    return matchesQuery && matchesCategory && matchesFolder;
   });
 }
 
@@ -599,32 +656,176 @@ function sortWithPinnedFirst(listData) {
 }
 
 function renderPrompts() {
-  // กรองข้อมูลและจัดเรียงลำดับด่วน: ให้เอาอันที่ถูกติ๊กเป็น Pinned กระโดดข้ามแถวมาอยู่บนสุดก่อนเสมอ
+  const query = searchInput.value.trim().toLowerCase();
+  
+  // Clear the list
+  list.innerHTML = '';
+  
+  // Setup the titles/subtitles
+  let displayTitle = activeCategory === 'all' ? 'All prompts' : `${activeCategory} prompts`;
+  if (activeFolder !== 'all') {
+    displayTitle = `📁 ${activeFolder}`;
+  }
+  listTitle.textContent = displayTitle;
+
+  // Let's get the filtered prompts
   const filteredPrompts = getFilteredPrompts().sort((a, b) => {
     if (a.isPinned && !b.isPinned) return -1;
     if (!a.isPinned && b.isPinned) return 1;
     return (b.createdAt || '').localeCompare(a.createdAt || '');
   });
 
-  list.innerHTML = '';
+  // If we are inside a specific folder, show a navigation banner at the very top of the list
+  if (activeFolder !== 'all') {
+    const navBanner = document.createElement('div');
+    navBanner.className = 'folder-navigation-banner';
+    
+    const leftSide = document.createElement('div');
+    leftSide.className = 'folder-nav-left';
+    
+    const backBtn = document.createElement('button');
+    backBtn.type = 'button';
+    backBtn.className = 'back-link-btn';
+    backBtn.innerHTML = '← Back to All folders';
+    backBtn.addEventListener('click', () => {
+      activeFolder = 'all';
+      render();
+    });
+    
+    const currentFolderText = document.createElement('span');
+    currentFolderText.className = 'current-folder-title';
+    currentFolderText.textContent = `Folder: ${activeFolder}`;
+    
+    leftSide.append(backBtn, currentFolderText);
+    navBanner.appendChild(leftSide);
+    
+    const rightSide = document.createElement('div');
+    const manageBtn = document.createElement('button');
+    manageBtn.type = 'button';
+    manageBtn.className = 'ghost-btn';
+    manageBtn.style.padding = '0.35rem 0.6rem';
+    manageBtn.style.fontSize = '0.85rem';
+    manageBtn.innerHTML = '⚙️ Manage Folder';
+    manageBtn.addEventListener('click', () => {
+      manageFolderOptions(activeFolder);
+    });
+    rightSide.appendChild(manageBtn);
+    navBanner.appendChild(rightSide);
+    
+    list.appendChild(navBanner);
+  }
 
-  if (filteredPrompts.length === 0) {
-    emptyMessage.classList.remove('hidden');
-    listTitle.textContent = activeCategory === 'all' ? 'All prompts' : `${activeCategory} prompts`;
-    listSummary.textContent = '0 prompts';
+  // If search query is empty and we are at the ROOT (activeFolder === 'all'), we render Folder Cards first
+  if (query === '' && activeFolder === 'all') {
+    const folders = getFolders();
+    folders.forEach((folder) => {
+      const folderPromptsCount = prompts.filter(p => (p.folder || '') === folder).length;
+      
+      const folderCard = document.createElement('li');
+      folderCard.className = 'workspace-folder-card';
+      folderCard.style.marginBottom = '0.75rem';
+      
+      const info = document.createElement('div');
+      info.className = 'folder-card-info';
+      
+      const icon = document.createElement('div');
+      icon.className = 'folder-card-icon';
+      icon.textContent = '📁';
+      
+      const details = document.createElement('div');
+      details.className = 'folder-card-details';
+      
+      const name = document.createElement('h3');
+      name.className = 'folder-card-name';
+      name.textContent = folder;
+      
+      const count = document.createElement('span');
+      count.className = 'folder-card-count';
+      count.textContent = `${folderPromptsCount} ${folderPromptsCount === 1 ? 'prompt' : 'prompts'}`;
+      
+      details.append(name, count);
+      info.append(icon, details);
+      folderCard.append(info);
+      
+      // Action buttons on the right side of the folder card
+      const actions = document.createElement('div');
+      actions.className = 'folder-card-actions';
+      
+      const openBtn = document.createElement('button');
+      openBtn.type = 'button';
+      openBtn.className = 'ghost-btn';
+      openBtn.style.fontSize = '0.85rem';
+      openBtn.textContent = 'Open';
+      openBtn.style.padding = '0.4rem 0.8rem';
+      
+      const manageBtn = document.createElement('button');
+      manageBtn.type = 'button';
+      manageBtn.className = 'ghost-btn';
+      manageBtn.style.padding = '0.4rem';
+      manageBtn.textContent = '⚙️';
+      manageBtn.title = 'Manage folder';
+      
+      manageBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        manageFolderOptions(folder);
+      });
+      
+      actions.append(openBtn, manageBtn);
+      folderCard.appendChild(actions);
+      
+      // Clicking the card opens the folder
+      folderCard.addEventListener('click', () => {
+        activeFolder = folder;
+        render();
+      });
+      
+      list.appendChild(folderCard);
+    });
+  }
+
+  // Determine what prompts to display:
+  // If we are on activeFolder === 'all' and there is NO search query, we only display root prompts (no folder)
+  // Otherwise, we display whatever is in filteredPrompts.
+  let promptsToDisplay = filteredPrompts;
+  if (query === '' && activeFolder === 'all') {
+    promptsToDisplay = filteredPrompts.filter(p => !p.folder || p.folder.trim() === '');
+  }
+
+  // Update summary count
+  const promptCountText = `${promptsToDisplay.length} ${promptsToDisplay.length === 1 ? 'prompt' : 'prompts'}`;
+  if (activeFolder === 'all' && query === '') {
+    listSummary.textContent = `${getFolders().length} folders, ${promptCountText} unassigned`;
+  } else {
+    listSummary.textContent = promptCountText;
+  }
+
+  if (promptsToDisplay.length === 0) {
+    if (list.children.length === 0) {
+      emptyMessage.classList.remove('hidden');
+    } else {
+      emptyMessage.classList.add('hidden');
+    }
     return;
   }
 
   emptyMessage.classList.add('hidden');
-  listTitle.textContent = activeCategory === 'all' ? 'All prompts' : `${activeCategory} prompts`;
-  listSummary.textContent = `${filteredPrompts.length} ${filteredPrompts.length === 1 ? 'prompt' : 'prompts'}`;
 
-  filteredPrompts.forEach((prompt) => {
+  promptsToDisplay.forEach((prompt) => {
     const item = document.createElement('li');
     item.className = `prompt-card ${prompt.isPinned ? 'pinned-card' : ''}`;
     item.dataset.id = prompt.id;
 
     const header = document.createElement('header');
+    header.style.display = 'flex';
+    header.style.justifyContent = 'space-between';
+    header.style.alignItems = 'flex-start';
+    header.style.gap = '0.75rem';
+
+    const leftSide = document.createElement('div');
+    leftSide.style.display = 'flex';
+    leftSide.style.flexDirection = 'column';
+    leftSide.style.gap = '0.35rem';
+
     const titleRow = document.createElement('div');
     titleRow.className = 'prompt-title-row';
 
@@ -637,12 +838,40 @@ function renderPrompts() {
     badge.textContent = getCategoryName(prompt);
 
     titleRow.append(title, badge);
-    header.appendChild(titleRow);
 
     const meta = document.createElement('span');
     meta.className = 'prompt-meta';
     meta.textContent = prompt.createdAt ? new Date(prompt.createdAt).toLocaleString() : 'Just now';
-    header.appendChild(meta);
+
+    leftSide.append(titleRow, meta);
+    header.appendChild(leftSide);
+
+    // Right-side Folder action button
+    const rightSide = document.createElement('div');
+    rightSide.className = 'prompt-right-side';
+    rightSide.style.display = 'flex';
+    rightSide.style.alignItems = 'center';
+    rightSide.style.gap = '0.5rem';
+
+    const folderBtn = document.createElement('button');
+    folderBtn.type = 'button';
+    folderBtn.className = 'prompt-folder-btn';
+    if (prompt.folder) {
+      folderBtn.innerHTML = `📁 <span class="folder-name-text">${prompt.folder}</span>`;
+      folderBtn.title = `Change folder (currently in: ${prompt.folder})`;
+      folderBtn.classList.add('in-folder');
+    } else {
+      folderBtn.innerHTML = `📁 <span class="folder-name-text">Move to Folder</span>`;
+      folderBtn.title = "Assign this prompt to a folder";
+    }
+
+    folderBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openMoveToFolderModal(prompt.id);
+    });
+
+    rightSide.appendChild(folderBtn);
+    header.appendChild(rightSide);
 
     const actions = document.createElement('div');
     actions.className = 'prompt-actions';
@@ -678,6 +907,311 @@ function renderPrompts() {
   });
 }
 
+// ============= FOLDERS MANAGEMENT & INTERACTIONS =============
+
+function showCustomInput(title, message, placeholder = '') {
+  return new Promise((resolve) => {
+    inputModalTitle.textContent = title;
+    inputModalMessage.textContent = message;
+    customModalInput.value = '';
+    customModalInput.placeholder = placeholder;
+
+    const cleanup = (value) => {
+      inputModalOverlay.classList.add('hidden');
+      inputModalCancelBtn.removeEventListener('click', onCancel);
+      inputModalSubmitBtn.removeEventListener('click', onSubmit);
+      inputModalCloseBtn.removeEventListener('click', onCancel);
+      inputModalOverlay.removeEventListener('click', onOverlayClick);
+      resolve(value);
+    };
+
+    const onCancel = () => cleanup(null);
+    const onSubmit = () => {
+      const val = customModalInput.value.trim();
+      cleanup(val);
+    };
+    const onOverlayClick = (e) => {
+      if (e.target === inputModalOverlay) cleanup(null);
+    };
+
+    inputModalCancelBtn.addEventListener('click', onCancel);
+    inputModalSubmitBtn.addEventListener('click', onSubmit);
+    inputModalCloseBtn.addEventListener('click', onCancel);
+    inputModalOverlay.addEventListener('click', onOverlayClick);
+
+    inputModalOverlay.classList.remove('hidden');
+    customModalInput.focus();
+  });
+}
+
+async function movePromptToFolder(promptId, folderName) {
+  const prompt = prompts.find(p => p.id === promptId);
+  if (!prompt) return;
+
+  prompt.folder = folderName;
+
+  // Save to server
+  const updatedPrompts = await savePromptToServer(prompt);
+  if (updatedPrompts) {
+    prompts = updatedPrompts.map(item => ({
+      ...item,
+      isPinned: item.id === prompt.id ? prompt.isPinned : (item.isPinned || false)
+    }));
+    render();
+    showStatus(folderName ? `Moved to folder "${folderName}"` : 'Removed from folder');
+  }
+}
+
+async function openMoveToFolderModal(promptId) {
+  const prompt = prompts.find(p => p.id === promptId);
+  if (!prompt) return;
+
+  folderModalPromptTitle.textContent = `Prompt: "${prompt.title || 'Untitled'}"`;
+  newFolderInput.value = '';
+
+  // Render existing folders list
+  const folders = getFolders();
+  existingFoldersList.innerHTML = '';
+
+  if (folders.length === 0) {
+    const emptyLi = document.createElement('li');
+    emptyLi.style.color = 'var(--muted)';
+    emptyLi.style.fontSize = '0.9rem';
+    emptyLi.style.textAlign = 'center';
+    emptyLi.style.padding = '0.5rem';
+    emptyLi.textContent = 'No folders created yet';
+    existingFoldersList.appendChild(emptyLi);
+  } else {
+    folders.forEach(f => {
+      const li = document.createElement('li');
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = `folder-select-item ${prompt.folder === f ? 'active' : ''}`;
+      btn.innerHTML = `<span>📁 ${f}</span> ${prompt.folder === f ? '<span>✓ Selected</span>' : ''}`;
+      btn.addEventListener('click', async () => {
+        await movePromptToFolder(promptId, f);
+        folderModalOverlay.classList.add('hidden');
+      });
+      li.appendChild(btn);
+      existingFoldersList.appendChild(li);
+    });
+  }
+
+  const onCreate = async () => {
+    const newName = newFolderInput.value.trim();
+    if (!newName) {
+      newFolderInput.focus();
+      return;
+    }
+    if (!customFolders.includes(newName)) {
+      customFolders.push(newName);
+      saveCustomFolders();
+    }
+    await movePromptToFolder(promptId, newName);
+    folderModalOverlay.classList.add('hidden');
+  };
+
+  const onRemove = async () => {
+    await movePromptToFolder(promptId, '');
+    folderModalOverlay.classList.add('hidden');
+  };
+
+  const onCancel = () => {
+    folderModalOverlay.classList.add('hidden');
+  };
+
+  const newCreateBtn = createFolderBtn.cloneNode(true);
+  createFolderBtn.replaceWith(newCreateBtn);
+  newCreateBtn.addEventListener('click', onCreate);
+
+  const newRemoveBtn = folderModalRemoveBtn.cloneNode(true);
+  folderModalRemoveBtn.replaceWith(newRemoveBtn);
+  if (prompt.folder) {
+    newRemoveBtn.classList.remove('hidden');
+    newRemoveBtn.addEventListener('click', onRemove);
+  } else {
+    newRemoveBtn.classList.add('hidden');
+  }
+
+  const newCancelBtn = folderModalCancelBtn.cloneNode(true);
+  folderModalCancelBtn.replaceWith(newCancelBtn);
+  newCancelBtn.addEventListener('click', onCancel);
+
+  const newCloseBtn = folderModalCloseBtn.cloneNode(true);
+  folderModalCloseBtn.replaceWith(newCloseBtn);
+  newCloseBtn.addEventListener('click', onCancel);
+
+  createFolderBtn = newCreateBtn;
+  folderModalRemoveBtn = newRemoveBtn;
+  folderModalCancelBtn = newCancelBtn;
+  folderModalCloseBtn = newCloseBtn;
+
+  folderModalOverlay.classList.remove('hidden');
+}
+
+async function showFolderActionConfirm(folderName) {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById('confirmModalOverlay');
+    const titleEl = document.getElementById('confirm-modal-title');
+    const messageEl = document.getElementById('confirm-modal-message');
+    const footerEl = overlay.querySelector('.modal-footer');
+    const closeBtn = document.getElementById('confirm-modal-close-btn');
+
+    titleEl.textContent = `Folder: "${folderName}"`;
+    messageEl.textContent = `Do you want to Rename or Delete this folder?`;
+
+    // Save original footer content to restore later
+    const originalFooterHTML = footerEl.innerHTML;
+
+    // Create three buttons: Cancel, Delete Folder, Rename
+    footerEl.innerHTML = `
+      <button type="button" id="folder-action-cancel" class="ghost-btn">Cancel</button>
+      <button type="button" id="folder-action-delete" class="delete-btn" style="background: rgba(255, 107, 107, 0.15); color: var(--danger); border: 1px solid rgba(255, 107, 107, 0.3);">Delete Folder</button>
+      <button type="button" id="folder-action-rename" class="copy-btn">Rename</button>
+    `;
+
+    const cancelBtn = document.getElementById('folder-action-cancel');
+    const deleteBtn = document.getElementById('folder-action-delete');
+    const renameBtn = document.getElementById('folder-action-rename');
+
+    const cleanup = (value) => {
+      overlay.classList.add('hidden');
+      footerEl.innerHTML = originalFooterHTML;
+      
+      closeBtn.removeEventListener('click', onCancel);
+      overlay.removeEventListener('click', onOverlayClick);
+      resolve(value);
+    };
+
+    const onCancel = () => cleanup(null);
+    const onDelete = () => cleanup('delete');
+    const onRename = () => cleanup('rename');
+    const onOverlayClick = (e) => {
+      if (e.target === overlay) cleanup(null);
+    };
+
+    cancelBtn.addEventListener('click', onCancel);
+    deleteBtn.addEventListener('click', onDelete);
+    renameBtn.addEventListener('click', onRename);
+    closeBtn.addEventListener('click', onCancel);
+    overlay.addEventListener('click', onOverlayClick);
+
+    overlay.classList.remove('hidden');
+  });
+}
+
+async function manageFolderOptions(folderName) {
+  const choice = await showFolderActionConfirm(folderName);
+
+  if (choice === 'rename') {
+    const newName = await showCustomInput('Rename Folder', `Enter new name for folder "${folderName}":`, folderName);
+    if (newName && newName !== folderName) {
+      const idx = customFolders.indexOf(folderName);
+      if (idx !== -1) {
+        customFolders[idx] = newName;
+      } else {
+        customFolders.push(newName);
+      }
+      saveCustomFolders();
+
+      for (const p of prompts) {
+        if (p.folder === folderName) {
+          p.folder = newName;
+          await savePromptToServer(p);
+        }
+      }
+
+      if (activeFolder === folderName) {
+        activeFolder = newName;
+      }
+
+      render();
+      showStatus(`Folder renamed to "${newName}"`);
+    }
+  } else if (choice === 'delete') {
+    const confirmDelete = await showCustomConfirm(
+      'Delete Folder',
+      `Are you sure you want to delete folder "${folderName}"? Prompts inside will be kept but removed from this folder.`,
+      'Delete Folder',
+      'delete-btn'
+    );
+
+    if (confirmDelete) {
+      const idx = customFolders.indexOf(folderName);
+      if (idx !== -1) {
+        customFolders.splice(idx, 1);
+        saveCustomFolders();
+      }
+
+      for (const p of prompts) {
+        if (p.folder === folderName) {
+          p.folder = '';
+          await savePromptToServer(p);
+        }
+      }
+
+      if (activeFolder === folderName) {
+        activeFolder = 'all';
+      }
+
+      render();
+      showStatus(`Folder "${folderName}" deleted`);
+    }
+  }
+}
+
+function renderFolders() {
+  const folders = getFolders();
+  folderList.innerHTML = '';
+
+  const allButton = document.createElement('button');
+  allButton.type = 'button';
+  allButton.className = `category-pill ${activeFolder === 'all' ? 'active' : ''}`;
+  allButton.innerHTML = '<span>All folders</span><strong>' + prompts.length + '</strong>';
+  allButton.addEventListener('click', () => {
+    activeFolder = 'all';
+    render();
+  });
+  folderList.appendChild(allButton);
+
+  folders.forEach((folder) => {
+    const count = prompts.filter((prompt) => (prompt.folder || '') === folder).length;
+    
+    const wrapper = document.createElement('div');
+    wrapper.className = 'folder-pill-wrapper';
+    wrapper.style.display = 'flex';
+    wrapper.style.width = '100%';
+    wrapper.style.gap = '0.25rem';
+    wrapper.style.alignItems = 'center';
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = `category-pill ${activeFolder === folder ? 'active' : ''}`;
+    button.style.flex = '1';
+    button.innerHTML = '<span>📁 ' + folder + '</span><strong>' + count + '</strong>';
+    button.addEventListener('click', () => {
+      activeFolder = folder;
+      render();
+    });
+    wrapper.appendChild(button);
+
+    const optionsBtn = document.createElement('button');
+    optionsBtn.type = 'button';
+    optionsBtn.className = 'ghost-btn';
+    optionsBtn.style.padding = '0.35rem';
+    optionsBtn.style.fontSize = '0.9rem';
+    optionsBtn.textContent = '⚙️';
+    optionsBtn.title = 'Manage folder';
+    optionsBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      manageFolderOptions(folder);
+    });
+    wrapper.appendChild(optionsBtn);
+
+    folderList.appendChild(wrapper);
+  });
+}
+
 function renderUserProfile() {
   if (currentUser) {
     userProfileCard.classList.remove('hidden');
@@ -691,6 +1225,7 @@ function renderUserProfile() {
 function render() {
   populateCategorySelect();
   renderSidebar();
+  renderFolders();
   renderPrompts();
   renderUserProfile();
 }
@@ -834,6 +1369,9 @@ function signOut() {
   currentUser = null;
   currentAccessToken = null;
   prompts = [];
+  activeFolder = 'all';
+  customFolders = [];
+  saveCustomFolders();
   
   const dynamicPanel = document.getElementById('app-backup-hub-panel');
   if (dynamicPanel) dynamicPanel.remove();
@@ -1099,10 +1637,28 @@ clearCategoryFilterButton.addEventListener('click', () => {
   activeCategory = 'all';
   render();
 });
+clearFolderFilterButton.addEventListener('click', () => {
+  activeFolder = 'all';
+  render();
+});
+sidebarAddFolderBtn.addEventListener('click', async () => {
+  const newName = await showCustomInput('📁 New Folder', 'Enter folder name:');
+  if (newName) {
+    if (!customFolders.includes(newName)) {
+      customFolders.push(newName);
+      saveCustomFolders();
+      render();
+      showStatus(`Folder "${newName}" created`);
+    } else {
+      showStatus('Folder already exists');
+    }
+  }
+});
 signOutButton.addEventListener('click', signOut);
 
 // Initialize App
 async function initializeApp() {
+  loadCustomFolders();
   renderUserProfile();
   
   // นำข้อมูล Local มา Render วาดหน้าจอทันทีเพื่อความเร็ว ไม่ต้องง้อ Cold Start หลังบ้าน

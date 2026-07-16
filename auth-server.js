@@ -47,7 +47,7 @@ async function getUserPromptsByEmail(email) {
   }
 
   const rows = await db.all(
-    `SELECT id, title, content AS text, tags AS category, created_at AS createdAt, is_pinned AS isPinned, use_count AS useCount
+    `SELECT id, title, content AS text, tags AS category, created_at AS createdAt, is_pinned AS isPinned, use_count AS useCount, folder
      FROM prompts
      WHERE user_id = ?
      ORDER BY is_pinned DESC, created_at DESC`,
@@ -57,7 +57,8 @@ async function getUserPromptsByEmail(email) {
   return rows.map(r => ({
     ...r,
     isPinned: !!r.isPinned,
-    useCount: Number(r.useCount || 0)
+    useCount: Number(r.useCount || 0),
+    folder: r.folder || ''
   }));
 }
 
@@ -184,7 +185,7 @@ app.get('/api/prompts', verifyToken, async (req, res) => {
 });
 
 app.post('/api/prompts', verifyToken, async (req, res) => {
-  const { id, title, text, category, createdAt, isPinned, useCount } = req.body;
+  const { id, title, text, category, createdAt, isPinned, useCount, folder } = req.body;
 
   if (!text) {
     return res.status(400).json({ error: 'Prompt text is required' });
@@ -203,19 +204,20 @@ app.post('/api/prompts', verifyToken, async (req, res) => {
 
     const pinVal = isPinned ? 1 : 0;
     const countVal = useCount !== undefined ? Number(useCount) : 0;
+    const folderVal = folder !== undefined ? folder : null;
 
     if (hasExistingPrompt) {
       await db.run(
         `UPDATE prompts
-         SET title = ?, content = ?, tags = ?, created_at = ?, is_pinned = ?, use_count = ?
+         SET title = ?, content = ?, tags = ?, created_at = ?, is_pinned = ?, use_count = ?, folder = ?
          WHERE id = ? AND user_id = ?`,
-        [title || '', text, category || null, createdAt || new Date().toISOString(), pinVal, countVal, numericId, userId]
+        [title || '', text, category || null, createdAt || new Date().toISOString(), pinVal, countVal, folderVal, numericId, userId]
       );
     } else {
       await db.run(
-        `INSERT INTO prompts (user_id, title, content, tags, created_at, is_pinned, use_count)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [userId, title || '', text, category || null, createdAt || new Date().toISOString(), pinVal, countVal]
+        `INSERT INTO prompts (user_id, title, content, tags, created_at, is_pinned, use_count, folder)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [userId, title || '', text, category || null, createdAt || new Date().toISOString(), pinVal, countVal, folderVal]
       );
     }
 
@@ -256,11 +258,12 @@ app.post('/api/prompts/batch', verifyToken, async (req, res) => {
       const createdAt = p.createdAt || new Date().toISOString();
       const pinVal = p.isPinned ? 1 : 0;
       const countVal = p.useCount !== undefined ? Number(p.useCount) : 0;
+      const folderVal = p.folder || null;
 
       await db.run(
-        `INSERT INTO prompts (user_id, title, content, tags, created_at, is_pinned, use_count)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [userId, title, text, category, createdAt, pinVal, countVal]
+        `INSERT INTO prompts (user_id, title, content, tags, created_at, is_pinned, use_count, folder)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [userId, title, text, category, createdAt, pinVal, countVal, folderVal]
       );
     }
 
