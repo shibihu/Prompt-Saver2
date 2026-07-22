@@ -2033,6 +2033,8 @@ form.addEventListener('submit', async (event) => {
     category,
     createdAt: existing?.createdAt || new Date().toISOString(),
     isPinned: existing ? (existing.isPinned || false) : false,
+    useCount: existing ? (existing.useCount || 0) : 0,
+    folder: existing ? (existing.folder || '') : '',
   };
 
   const updatedPrompts = await savePromptToServer(prompt);

@@ -234,6 +234,24 @@ h1 {
   gap: 0.5rem;
 }
 
+#folder-list {
+  max-height: 250px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+/* Make folder list scrollbar look sleek */
+#folder-list::-webkit-scrollbar {
+  width: 6px;
+}
+#folder-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+#folder-list::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
 .category-pill {
   width: 100%;
   display: flex;
